@@ -66,11 +66,6 @@ workflows:
           set -euo pipefail
           cd ios-app/OsuTablet
 
-      - name: Create unsigned IPA package
-        script: |
-          set -euo pipefail
-          cd ios-app/OsuTablet
-
           echo "Searching for .app bundle..."
           find build -name "*.app" -type d 2>/dev/null | head -10 || echo "No .app found"
           
