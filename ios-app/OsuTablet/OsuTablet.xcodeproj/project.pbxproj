@@ -16,6 +16,7 @@
 		FileRef13 /* ConnectionManager.swift */ = {isa = PBXBuildFile; fileRef = FileRef14; };
 		FileRef15 /* TouchManager.swift */ = {isa = PBXBuildFile; fileRef = FileRef16; };
 		FileRef17 /* SettingsManager.swift */ = {isa = PBXBuildFile; fileRef = FileRef18; };
+		FileRef21 /* Assets.xcassets */ = {isa = PBXBuildFile; fileRef = FileRef22; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		FileRef18 /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
 		FileRef19 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FileRef20 /* OsuTablet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OsuTablet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FileRef22 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,7 +66,9 @@
 		Resources1 = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = ();
+			files = (
+				FileRef21 /* Assets.xcassets */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -83,6 +87,7 @@
 			children = (
 				FileRef2 /* OsuTabletApp.swift */,
 				FileRef19 /* Info.plist */,
+				FileRef22 /* Assets.xcassets */,
 				GroupViews,
 				GroupManagers,
 			);
