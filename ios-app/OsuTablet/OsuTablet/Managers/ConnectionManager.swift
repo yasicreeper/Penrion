@@ -19,6 +19,11 @@ class ConnectionManager: ObservableObject {
         let parameters = NWParameters.tcp
         parameters.includePeerToPeer = true
         
+        // Also scan local network for devices
+        Task {
+            await scanLocalNetwork()
+        }
+        
         // Create browser for network service discovery
         browser = NWBrowser(for: .bonjour(type: "_osutablet._tcp", domain: nil), using: parameters)
         
@@ -201,6 +206,115 @@ class ConnectionManager: ObservableObject {
         default:
             return "Unknown"
         }
+    }
+    
+    private func scanLocalNetwork() async {
+        // Get local IP to determine subnet
+        guard let localIP = getLocalIPAddress() else { return }
+        
+        let components = localIP.split(separator: ".")
+        guard components.count == 4 else { return }
+        
+        let subnet = "\(components[0]).\(components[1]).\(components[2])"
+        
+        // Scan common IPs in subnet (limited scan to avoid performance issues)
+        let commonLastOctets = [1, 2, 100, 101, 102, 103, 104, 105, 150, 200, 254]
+        
+        for i in commonLastOctets {
+            let testIP = "\(subnet).\(i)"
+            
+            // Skip if it's our own IP
+            if testIP == localIP {
+                continue
+            }
+            
+            // Try to connect briefly to test
+            Task {
+                if await testConnection(to: testIP) {
+                    DispatchQueue.main.async {
+                        let device = DiscoveredDevice(
+                            id: testIP,
+                            name: "Windows PC (\(testIP))",
+                            ipAddress: testIP,
+                            endpoint: nil
+                        )
+                        
+                        // Add if not already discovered
+                        if !self.discoveredDevices.contains(where: { $0.ipAddress == testIP }) {
+                            self.discoveredDevices.append(device)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func testConnection(to ipAddress: String) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            let parameters = NWParameters.tcp
+            parameters.includePeerToPeer = true
+            
+            let host = NWEndpoint.Host(ipAddress)
+            let port = NWEndpoint.Port(integerLiteral: self.port)
+            let testConnection = NWConnection(host: host, port: port, using: parameters)
+            
+            var hasResponded = false
+            
+            testConnection.stateUpdateHandler = { state in
+                guard !hasResponded else { return }
+                hasResponded = true
+                
+                switch state {
+                case .ready:
+                    testConnection.cancel()
+                    continuation.resume(returning: true)
+                case .failed, .cancelled:
+                    continuation.resume(returning: false)
+                default:
+                    break
+                }
+            }
+            
+            testConnection.start(queue: .global())
+            
+            // Timeout after 0.5 seconds
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                if !hasResponded {
+                    hasResponded = true
+                    testConnection.cancel()
+                    continuation.resume(returning: false)
+                }
+            }
+        }
+    }
+    
+    private func getLocalIPAddress() -> String? {
+        var address: String?
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        
+        if getifaddrs(&ifaddr) == 0 {
+            var ptr = ifaddr
+            while ptr != nil {
+                defer { ptr = ptr?.pointee.ifa_next }
+                
+                guard let interface = ptr?.pointee else { continue }
+                let addrFamily = interface.ifa_addr.pointee.sa_family
+                
+                if addrFamily == UInt8(AF_INET) {
+                    let name = String(cString: interface.ifa_name)
+                    if name == "en0" || name == "en1" { // WiFi interfaces
+                        var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                        getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
+                                    &hostname, socklen_t(hostname.count),
+                                    nil, socklen_t(0), NI_NUMERICHOST)
+                        address = String(cString: hostname)
+                    }
+                }
+            }
+            freeifaddrs(ifaddr)
+        }
+        
+        return address
     }
 }
 
