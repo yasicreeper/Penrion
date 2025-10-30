@@ -222,6 +222,10 @@ enum OsuWindowSize: String, CaseIterable {
     case large = "Large (1280x960)"
     case pro = "Pro (1920x1080)"
     
+    var displayName: String {
+        return rawValue
+    }
+    
     var resolution: (width: Int, height: Int) {
         switch self {
         case .tiny: return (640, 480)

@@ -135,13 +135,35 @@ struct SettingsView: View {
                 
                 // ===== STATISTICS SECTION =====
                 Section(header: Text("Statistics")) {
-                    NavigationLink(destination: StatsView()) {
-                        HStack {
-                            Image(systemName: "chart.line.uptrend.xyaxis")
-                                .foregroundColor(themeManager.currentTheme.accentColor)
-                            Text("View Detailed Stats")
+                    // TODO: Uncomment when StatsView is added to Xcode project
+                    // NavigationLink(destination: StatsView()) {
+                    //     HStack {
+                    //         Image(systemName: "chart.line.uptrend.xyaxis")
+                    //             .foregroundColor(themeManager.currentTheme.accentColor)
+                    //         Text("View Detailed Stats")
+                    //     }
+                    // }
+                    
+                    HStack {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .foregroundColor(themeManager.currentTheme.accentColor)
+                        VStack(alignment: .leading) {
+                            Text("Total Sessions")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Text("\(statsTracker.totalSessions)")
+                                .font(.headline)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing) {
+                            Text("Total Touches")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Text("\(statsTracker.totalTouches)")
+                                .font(.headline)
                         }
                     }
+                    .padding(.vertical, 4)
                     
                     Button("Reset Statistics") {
                         statsTracker.resetStats()
@@ -191,12 +213,4 @@ struct SettingsView: View {
             }
         }
     }
-}
-
-enum PressureCurve: String, Codable {
-    case linear, exponential, logarithmic, custom
-}
-
-enum StreamQuality: String, Codable {
-    case veryLow, low, medium, high
 }
