@@ -59,12 +59,18 @@ Transform your iPad into a professional OSU! drawing tablet with screen mirrorin
 - [x] Includes .NET 8.0 runtime
 - [x] Ready to run (as Administrator)
 
-#### iOS Build: ✅ SCRIPT READY
+#### iOS Build: ✅ READY + CLOUD CI/CD
 - [x] Created `build-ios.sh` for macOS
 - [x] Configured Xcode project for sideloading
 - [x] Manual signing configuration (for flexibility)
 - [x] Output will be: `release/ios/Penrion-OsuTablet.ipa`
 - [x] Created comprehensive `IPA_BUILD_GUIDE.md`
+- [x] **✅ NEW: Codemagic CI/CD Setup**
+  - [x] Created `codemagic.yaml` configuration
+  - [x] Automatic IPA builds on every push
+  - [x] No Mac required for building
+  - [x] Both signed and unsigned workflows
+  - [x] Created `CODEMAGIC_SETUP.md` guide
 - [x] Documented all installation methods:
   - Jailbroken (AppSync Unified)
   - Non-jailbroken (AltStore, SideStore, Sideloadly)
