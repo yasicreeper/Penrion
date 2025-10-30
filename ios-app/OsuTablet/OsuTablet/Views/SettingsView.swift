@@ -2,8 +2,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
-    @EnvironmentObject var themeManager: ThemeManager
-    @EnvironmentObject var statsTracker: StatsTracker
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -21,21 +19,6 @@ struct SettingsView: View {
                         VStack(alignment: .leading) {
                             Text("Inactivity Timeout: \(Int(settingsManager.inactivityTimeout / 60)) minutes")
                             Slider(value: $settingsManager.inactivityTimeout, in: 60...600, step: 60)
-                        }
-                    }
-                }
-                
-                // ===== THEME SECTION =====
-                Section(header: Text("Theme")) {
-                    Picker("Visual Theme", selection: $themeManager.selectedTheme) {
-                        ForEach(Theme.allCases, id: \.self) { theme in
-                            HStack {
-                                Circle()
-                                    .fill(theme.accentColor)
-                                    .frame(width: 20, height: 20)
-                                Text(theme.displayName)
-                            }
-                            .tag(theme)
                         }
                     }
                 }
@@ -135,40 +118,10 @@ struct SettingsView: View {
                 
                 // ===== STATISTICS SECTION =====
                 Section(header: Text("Statistics")) {
-                    // TODO: Uncomment when StatsView is added to Xcode project
-                    // NavigationLink(destination: StatsView()) {
-                    //     HStack {
-                    //         Image(systemName: "chart.line.uptrend.xyaxis")
-                    //             .foregroundColor(themeManager.currentTheme.accentColor)
-                    //         Text("View Detailed Stats")
-                    //     }
-                    // }
-                    
-                    HStack {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .foregroundColor(themeManager.currentTheme.accentColor)
-                        VStack(alignment: .leading) {
-                            Text("Total Sessions")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            Text("\(statsTracker.totalSessions)")
-                                .font(.headline)
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing) {
-                            Text("Total Touches")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            Text("\(statsTracker.totalTouches)")
-                                .font(.headline)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                    
-                    Button("Reset Statistics") {
-                        statsTracker.resetStats()
-                    }
-                    .foregroundColor(.orange)
+                    // TODO: Add stats when managers are added to Xcode project
+                    Text("Statistics coming soon")
+                        .foregroundColor(.gray)
+                        .font(.caption)
                 }
                 
                 // ===== CALIBRATION SECTION =====
