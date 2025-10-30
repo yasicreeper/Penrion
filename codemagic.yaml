@@ -133,24 +133,25 @@ workflows:
       # Email with IPA download link
       email:
         recipients:
-          - your-email@example.com  # CHANGE THIS to your email
+          - yasicree9@gmail.com
         notify:
           success: true    # Get email when build succeeds
           failure: true    # Get email when build fails
       
+      # Firebase App Distribution - Automatic upload to Firebase
+      firebase:
+        firebase_service_account: $FIREBASE_SERVICE_ACCOUNT
+        ios:
+          app_id: 1:1061806026619:ios:61b583e58fe3683abb97de
+          groups:
+            - testers
+        
       # Uncomment below to enable Slack notifications (optional)
       # slack:
       #   channel: '#ios-builds'
       #   notify:
       #     success: true
       #     failure: false
-      
-      # Uncomment below to enable Firebase App Distribution (requires setup)
-      # firebase:
-      #   firebase_token: $FIREBASE_TOKEN
-      #   app_id: $FIREBASE_APP_ID
-      #   groups:
-      #     - testers
 
   # ============================================
   # Alias workflow for tools referencing "ios-workflow"
@@ -271,10 +272,18 @@ workflows:
       # Email with IPA download link
       email:
         recipients:
-          - your-email@example.com  # CHANGE THIS to your email
+          - yasicree9@gmail.com
         notify:
           success: true
           failure: true
+      
+      # Firebase App Distribution - Automatic upload to Firebase
+      firebase:
+        firebase_service_account: $FIREBASE_SERVICE_ACCOUNT
+        ios:
+          app_id: 1:1061806026619:ios:61b583e58fe3683abb97de
+          groups:
+            - testers
       
       # Uncomment below to enable Slack notifications (optional)
       # slack:
@@ -282,10 +291,3 @@ workflows:
       #   notify:
       #     success: true
       #     failure: false
-      
-      # Uncomment below to enable Firebase App Distribution (requires setup)
-      # firebase:
-      #   firebase_token: $FIREBASE_TOKEN
-      #   app_id: $FIREBASE_APP_ID
-      #   groups:
-      #     - testers
