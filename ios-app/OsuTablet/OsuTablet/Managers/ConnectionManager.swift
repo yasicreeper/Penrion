@@ -258,11 +258,18 @@ class ConnectionManager: ObservableObject {
             let port = NWEndpoint.Port(integerLiteral: self.port)
             let testConnection = NWConnection(host: host, port: port, using: parameters)
             
-            var hasResponded = false
+            let hasResponded = OSAllocatedUnfairLock(initialState: false)
             
             testConnection.stateUpdateHandler = { state in
-                guard !hasResponded else { return }
-                hasResponded = true
+                let shouldContinue = hasResponded.withLock { responded in
+                    if responded {
+                        return false
+                    }
+                    responded = true
+                    return true
+                }
+                
+                guard shouldContinue else { return }
                 
                 switch state {
                 case .ready:
@@ -279,8 +286,15 @@ class ConnectionManager: ObservableObject {
             
             // Timeout after 0.5 seconds
             DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
-                if !hasResponded {
-                    hasResponded = true
+                let shouldTimeout = hasResponded.withLock { responded in
+                    if responded {
+                        return false
+                    }
+                    responded = true
+                    return true
+                }
+                
+                if shouldTimeout {
                     testConnection.cancel()
                     continuation.resume(returning: false)
                 }
