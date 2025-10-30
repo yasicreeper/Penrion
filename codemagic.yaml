@@ -130,12 +130,27 @@ workflows:
       - release/ios/*.ipa
     
     publishing:
+      # Email with IPA download link
       email:
         recipients:
-          - your-email@example.com
+          - your-email@example.com  # CHANGE THIS to your email
         notify:
-          success: true
-          failure: true
+          success: true    # Get email when build succeeds
+          failure: true    # Get email when build fails
+      
+      # Uncomment below to enable Slack notifications (optional)
+      # slack:
+      #   channel: '#ios-builds'
+      #   notify:
+      #     success: true
+      #     failure: false
+      
+      # Uncomment below to enable Firebase App Distribution (requires setup)
+      # firebase:
+      #   firebase_token: $FIREBASE_TOKEN
+      #   app_id: $FIREBASE_APP_ID
+      #   groups:
+      #     - testers
 
   # ============================================
   # Alias workflow for tools referencing "ios-workflow"
@@ -253,9 +268,24 @@ workflows:
     artifacts:
       - release/ios/*.ipa
     publishing:
+      # Email with IPA download link
       email:
         recipients:
-          - your-email@example.com
+          - your-email@example.com  # CHANGE THIS to your email
         notify:
           success: true
           failure: true
+      
+      # Uncomment below to enable Slack notifications (optional)
+      # slack:
+      #   channel: '#ios-builds'
+      #   notify:
+      #     success: true
+      #     failure: false
+      
+      # Uncomment below to enable Firebase App Distribution (requires setup)
+      # firebase:
+      #   firebase_token: $FIREBASE_TOKEN
+      #   app_id: $FIREBASE_APP_ID
+      #   groups:
+      #     - testers
