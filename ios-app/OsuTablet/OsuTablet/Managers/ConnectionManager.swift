@@ -253,26 +253,52 @@ class ConnectionManager: ObservableObject {
         // Calculate FPS based on performance mode with intelligent scaling
         let targetFPS = settingsManager.veryLowLatencyMode ? 144 : (settingsManager.performanceMode ? 120 : 90)
         
+        // Send ALL settings to Windows (so Windows can display and control them)
         let settings: [String: Any] = [
             "type": "settings",
+            // Performance Settings
             "streamQuality": settingsManager.streamQuality.rawValue,
             "lowLatencyMode": settingsManager.lowLatencyMode,
             "veryLowLatencyMode": settingsManager.veryLowLatencyMode,
+            "performanceMode": settingsManager.performanceMode,
+            "batterySaver": settingsManager.batterySaver,
             "targetFPS": targetFPS,
             "jpegQuality": getJPEGQuality(for: settingsManager.streamQuality),
+            "touchRate": Int(settingsManager.touchRate),
+            
+            // Active Area Settings
             "activeAreaWidth": settingsManager.activeAreaWidth,
             "activeAreaHeight": settingsManager.activeAreaHeight,
+            "showActiveArea": settingsManager.showActiveArea,
+            
+            // Pressure Settings
             "pressureSensitivity": settingsManager.pressureSensitivity,
-            "performanceMode": settingsManager.performanceMode,
-            "touchRate": Int(settingsManager.touchRate)
+            "pressureCurve": settingsManager.pressureCurve.rawValue,
+            
+            // Feedback Settings
+            "visualFeedback": settingsManager.visualFeedback,
+            "hapticFeedback": settingsManager.hapticFeedback,
+            "soundEffects": settingsManager.soundEffects,
+            
+            // Display Settings
+            "blackScreenMode": settingsManager.blackScreenMode,
+            "blackScreenButtonEnabled": settingsManager.blackScreenButtonEnabled,
+            "alwaysOnDisplay": settingsManager.alwaysOnDisplay,
+            "keepScreenOn": settingsManager.keepScreenOn,
+            "fullscreenMode": settingsManager.fullscreenMode,
+            
+            // Network Settings
+            "port": settingsManager.port,
+            "autoConnect": settingsManager.autoConnect,
+            "autoReconnect": settingsManager.autoReconnect
         ]
         
-        print("📤 Sending settings to Windows:")
+        print("📤 Sending ALL settings to Windows:")
         print("  - Touch Rate: \(Int(settingsManager.touchRate)) Hz")
         print("  - Target FPS: \(targetFPS)")
         print("  - Stream Quality: \(settingsManager.streamQuality.rawValue)")
-        print("  - Very Low Latency: \(settingsManager.veryLowLatencyMode)")
-        print("  - Performance Mode: \(settingsManager.performanceMode)")
+        print("  - Pressure Sensitivity: \(settingsManager.pressureSensitivity)")
+        print("  - Active Area: \(settingsManager.activeAreaWidth) x \(settingsManager.activeAreaHeight)")
         
         if let jsonData = try? JSONSerialization.data(withJSONObject: settings) {
             var message = jsonData
@@ -281,15 +307,15 @@ class ConnectionManager: ObservableObject {
             message = lengthData + jsonData
             
             connection.send(content: message, completion: .contentProcessed({ error in
-                // Hide loading state
-                DispatchQueue.main.async {
+                // MINIMUM 0.5 second loading animation as requested
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     settingsManager.isSaving = false
                 }
                 
                 if let error = error {
                     print("❌ Settings send error: \(error)")
                 } else {
-                    print("✅ Settings sent successfully")
+                    print("✅ Settings sent successfully to Windows")
                 }
             }))
         }
@@ -363,9 +389,91 @@ class ConnectionManager: ObservableObject {
                         self.currentFPS = fps
                     }
                 }
+            case "settings":
+                // Receive settings FROM Windows (user changed them in Windows app)
+                handleSettingsFromWindows(json)
             default:
                 break
             }
+        }
+    }
+    
+    private func handleSettingsFromWindows(_ json: [String: Any]) {
+        guard let sm = attachedSettingsManager else {
+            print("⚠️ No settings manager attached")
+            return
+        }
+        
+        print("📥 Receiving settings FROM Windows app...")
+        
+        DispatchQueue.main.async {
+            // Update iOS settings from Windows changes
+            if let touchRate = json["touchRate"] as? Int {
+                sm.touchRate = Double(touchRate)
+                print("  - Touch Rate: \(touchRate) Hz")
+            }
+            
+            if let activeAreaWidth = json["activeAreaWidth"] as? Double {
+                sm.activeAreaWidth = activeAreaWidth
+            }
+            if let activeAreaHeight = json["activeAreaHeight"] as? Double {
+                sm.activeAreaHeight = activeAreaHeight
+            }
+            if let showActiveArea = json["showActiveArea"] as? Bool {
+                sm.showActiveArea = showActiveArea
+            }
+            
+            if let pressureSensitivity = json["pressureSensitivity"] as? Double {
+                sm.pressureSensitivity = pressureSensitivity
+                print("  - Pressure Sensitivity: \(pressureSensitivity)")
+            }
+            if let pressureCurve = json["pressureCurve"] as? String,
+               let curve = PressureCurve(rawValue: pressureCurve) {
+                sm.pressureCurve = curve
+            }
+            
+            if let streamQuality = json["streamQuality"] as? String,
+               let quality = StreamQuality(rawValue: streamQuality) {
+                sm.streamQuality = quality
+                print("  - Stream Quality: \(streamQuality)")
+            }
+            if let lowLatencyMode = json["lowLatencyMode"] as? Bool {
+                sm.lowLatencyMode = lowLatencyMode
+            }
+            if let veryLowLatencyMode = json["veryLowLatencyMode"] as? Bool {
+                sm.veryLowLatencyMode = veryLowLatencyMode
+            }
+            if let performanceMode = json["performanceMode"] as? Bool {
+                sm.performanceMode = performanceMode
+            }
+            if let batterySaver = json["batterySaver"] as? Bool {
+                sm.batterySaver = batterySaver
+            }
+            
+            if let visualFeedback = json["visualFeedback"] as? Bool {
+                sm.visualFeedback = visualFeedback
+            }
+            if let hapticFeedback = json["hapticFeedback"] as? Bool {
+                sm.hapticFeedback = hapticFeedback
+            }
+            if let soundEffects = json["soundEffects"] as? Bool {
+                sm.soundEffects = soundEffects
+            }
+            
+            if let blackScreenMode = json["blackScreenMode"] as? Bool {
+                sm.blackScreenMode = blackScreenMode
+            }
+            if let fullscreenMode = json["fullscreenMode"] as? Bool {
+                sm.fullscreenMode = fullscreenMode
+            }
+            if let keepScreenOn = json["keepScreenOn"] as? Bool {
+                sm.keepScreenOn = keepScreenOn
+            }
+            if let alwaysOnDisplay = json["alwaysOnDisplay"] as? Bool {
+                sm.alwaysOnDisplay = alwaysOnDisplay
+            }
+            
+            print("✅ Settings updated from Windows app!")
         }
     }
     
