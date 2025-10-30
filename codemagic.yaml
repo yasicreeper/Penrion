@@ -144,14 +144,10 @@ workflows:
       
       # GitHub Releases - Automatic upload to GitHub
       github_releases:
-        prerelease: false
-        artifact_patterns:
-          - release/ios/*.ipa
-        commit: $CM_COMMIT
+        release_type: release
         tag: v1.0.$CM_BUILD_NUMBER
-        tag_message: |
-          iOS Build #$CM_BUILD_NUMBER
-          
+        name: iOS Build #$CM_BUILD_NUMBER
+        body: |
           📱 Penrion OSU! Tablet - Unsigned IPA
           
           ## Installation Instructions
@@ -307,14 +303,10 @@ workflows:
       
       # GitHub Releases - Automatic upload to GitHub
       github_releases:
-        prerelease: false
-        artifact_patterns:
-          - release/ios/*.ipa
-        commit: $CM_COMMIT
+        release_type: release
         tag: v1.0.$CM_BUILD_NUMBER
-        tag_message: |
-          iOS Build #$CM_BUILD_NUMBER
-          
+        name: iOS Build #$CM_BUILD_NUMBER
+        body: |
           📱 Penrion OSU! Tablet - Unsigned IPA
           
           ## Installation Instructions
