@@ -56,56 +56,68 @@ workflows:
       
       - name: Create unsigned IPA package
         script: |
+          set -e
           cd ios-app/OsuTablet
-          
-          # Find the built app
-          APP_PATH=$(find build/DerivedData -name "*.app" -type d | head -1)
-          
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ Error: Could not find built .app file"
+
+          # Try to determine .app path from build settings
+          APP_DIR=$(xcodebuild \
+            -project OsuTablet.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -showBuildSettings | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1)
+
+          WRAPPER_NAME=$(xcodebuild \
+            -project OsuTablet.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -showBuildSettings | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1)
+
+          if [ -n "$APP_DIR" ] && [ -n "$WRAPPER_NAME" ]; then
+            APP_PATH="$APP_DIR/$WRAPPER_NAME"
+          else
+            # Fallback to find if showBuildSettings didn't return values
+            APP_PATH=$(find build/DerivedData -path "*Release-iphoneos/*.app" -type d | head -1)
+          fi
+
+          echo "APP_DIR=$APP_DIR"
+          echo "WRAPPER_NAME=$WRAPPER_NAME"
+          echo "Resolved APP_PATH=$APP_PATH"
+
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            echo "❌ Error: Could not find built .app directory"
+            find build -maxdepth 4 -type d -name "*.app" | sed 's/^/Found candidate: /' || true
             exit 1
           fi
-          
-          echo "Found app at: $APP_PATH"
-          
-          # Create Payload directory
+
+          # Prepare Payload and create IPA
+          rm -rf build/Payload
           mkdir -p build/Payload
-          
-          # Copy app to Payload
-          cp -r "$APP_PATH" build/Payload/
-          
-          # Create IPA (zip file)
+          cp -R "$APP_PATH" build/Payload/
+
           cd build
-          zip -qr Penrion-OsuTablet-Unsigned.ipa Payload
-          
-          # Move to release directory
+          zip -qry Penrion-OsuTablet-Unsigned.ipa Payload
+
+          # Move IPA to repo release directory
           mkdir -p ../../release/ios
-          mv Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
-          
-          echo "✓ IPA created successfully"
-          
+          mv -f Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+
+          echo "✓ IPA created at: $(pwd)/../../release/ios/Penrion-OsuTablet-Unsigned.ipa"
+
       - name: Verify IPA
         script: |
+          echo "PWD=$(pwd)"
+          ls -la
+          echo "Listing release directory:" 
+          ls -la release || true
+          echo "Listing release/ios directory:" 
+          ls -la release/ios || true
           if [ -f "release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
             echo "✅ Build successful!"
-            echo ""
-            ls -lh release/ios/Penrion-OsuTablet-Unsigned.ipa
-            echo ""
-            echo "📱 Installation Instructions:"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "For Jailbroken Devices:"
-            echo "  1. Install AppSync Unified from Karen's Repo"
-            echo "  2. Download the IPA file"
-            echo "  3. Install with Filza or similar"
-            echo ""
-            echo "For Non-Jailbroken Devices:"
-            echo "  Option 1: Use iOS App Signer to sign with your certificate"
-            echo "  Option 2: Use AltStore/Sideloadly (free, 7-day expiry)"
-            echo "  Option 3: Use paid Apple Developer cert (1-year expiry)"
-            echo ""
-            echo "Download from: Artifacts section below"
+            ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
           else
-            echo "❌ Error: IPA file not found"
+            echo "❌ IPA not found"
             exit 1
           fi
     
@@ -163,21 +175,53 @@ workflows:
             | xcpretty || true
       - name: Create unsigned IPA package
         script: |
+          set -e
           cd ios-app/OsuTablet
-          APP_PATH=$(find build/DerivedData -name "*.app" -type d | head -1)
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ Error: Could not find built .app file"
+
+          APP_DIR=$(xcodebuild \
+            -project OsuTablet.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -showBuildSettings | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1)
+
+          WRAPPER_NAME=$(xcodebuild \
+            -project OsuTablet.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -showBuildSettings | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1)
+
+          if [ -n "$APP_DIR" ] && [ -n "$WRAPPER_NAME" ]; then
+            APP_PATH="$APP_DIR/$WRAPPER_NAME"
+          else
+            APP_PATH=$(find build/DerivedData -path "*Release-iphoneos/*.app" -type d | head -1)
+          fi
+
+          echo "Resolved APP_PATH=$APP_PATH"
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            echo "❌ Error: Could not find built .app directory"
             exit 1
           fi
+
+          rm -rf build/Payload
           mkdir -p build/Payload
-          cp -r "$APP_PATH" build/Payload/
+          cp -R "$APP_PATH" build/Payload/
+
           cd build
-          zip -qr Penrion-OsuTablet-Unsigned.ipa Payload
+          zip -qry Penrion-OsuTablet-Unsigned.ipa Payload
           mkdir -p ../../release/ios
-          mv Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+          mv -f Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+
       - name: Verify IPA
         script: |
-          test -f "release/ios/Penrion-OsuTablet-Unsigned.ipa" && echo "✅ Build successful!" || (echo "❌ IPA not found" && exit 1)
+          if [ -f "release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
+            echo "✅ Build successful!"
+            ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          else
+            echo "❌ IPA not found"
+            exit 1
+          fi
     artifacts:
       - release/ios/*.ipa
     publishing:
