@@ -106,15 +106,17 @@ workflows:
       - name: Verify IPA
         script: |
           set -euo pipefail
-          echo "PWD=$(pwd)"
-          ls -la
-          echo "Listing release directory:" 
-          ls -la release || true
-          echo "Listing release/ios directory:" 
-          ls -la release/ios || true
-          test -f "release/ios/Penrion-OsuTablet-Unsigned.ipa"
-          echo "✅ Build successful!"
-          ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          cd ios-app/OsuTablet
+          echo "Current directory: $(pwd)"
+          echo "Checking for IPA file..."
+          if [ -f "../../release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
+            echo "✅ Build successful!"
+            ls -lh "../../release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          else
+            echo "Searching for IPA in workspace..."
+            find ../.. -name "*.ipa" -type f 2>/dev/null || echo "No IPA found"
+            exit 1
+          fi
 
     artifacts:
       - release/ios/*.ipa
@@ -225,9 +227,15 @@ workflows:
       - name: Verify IPA
         script: |
           set -euo pipefail
-          test -f "release/ios/Penrion-OsuTablet-Unsigned.ipa"
-          echo "✅ Build successful!"
-          ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          cd ios-app/OsuTablet
+          if [ -f "../../release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
+            echo "✅ Build successful!"
+            ls -lh "../../release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          else
+            echo "Searching for IPA..."
+            find ../.. -name "*.ipa" -type f 2>/dev/null || echo "No IPA found"
+            exit 1
+          fi
     artifacts:
       - release/ios/*.ipa
     publishing:
