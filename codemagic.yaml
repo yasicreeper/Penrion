@@ -14,6 +14,7 @@ workflows:
         XCODE_SCHEME: "OsuTablet"
         FIREBASE_SERVICE_ACCOUNT: $FIREBASE_SERVICE_ACCOUNT
         FIREBASE_APP_ID: $FIREBASE_APP_ID
+        GITHUB_TOKEN: $GITHUB_TOKEN
       xcode: 15.0
     scripts:
       - name: Set up build environment
@@ -140,6 +141,33 @@ workflows:
         notify:
           success: true    # Get email when build succeeds
           failure: true    # Get email when build fails
+      
+      # GitHub Releases - Automatic upload to GitHub
+      github_releases:
+        prerelease: false
+        artifact_patterns:
+          - release/ios/*.ipa
+        commit: $CM_COMMIT
+        tag: v1.0.$CM_BUILD_NUMBER
+        tag_message: |
+          iOS Build #$CM_BUILD_NUMBER
+          
+          📱 Penrion OSU! Tablet - Unsigned IPA
+          
+          ## Installation Instructions
+          1. Download Penrion-OsuTablet-Unsigned.ipa
+          2. Install using AltStore or Sideloadly
+          3. Connect iPad and PC to same WiFi
+          4. Run Windows app as Administrator
+          5. Open iOS app and connect!
+          
+          ## What's Included
+          - Unsigned IPA for sideloading
+          - Compatible with iOS 17.0+
+          - Apple Pencil pressure support
+          - Real-time screen mirroring
+          
+          Build date: $CM_BUILD_DATE
         
       # Uncomment below to enable Slack notifications (optional)
       # slack:
@@ -162,6 +190,7 @@ workflows:
         XCODE_SCHEME: "OsuTablet"
         FIREBASE_SERVICE_ACCOUNT: $FIREBASE_SERVICE_ACCOUNT
         FIREBASE_APP_ID: $FIREBASE_APP_ID
+        GITHUB_TOKEN: $GITHUB_TOKEN
       xcode: 15.0
     scripts:
       - name: Set up build environment
@@ -275,6 +304,33 @@ workflows:
         notify:
           success: true
           failure: true
+      
+      # GitHub Releases - Automatic upload to GitHub
+      github_releases:
+        prerelease: false
+        artifact_patterns:
+          - release/ios/*.ipa
+        commit: $CM_COMMIT
+        tag: v1.0.$CM_BUILD_NUMBER
+        tag_message: |
+          iOS Build #$CM_BUILD_NUMBER
+          
+          📱 Penrion OSU! Tablet - Unsigned IPA
+          
+          ## Installation Instructions
+          1. Download Penrion-OsuTablet-Unsigned.ipa
+          2. Install using AltStore or Sideloadly
+          3. Connect iPad and PC to same WiFi
+          4. Run Windows app as Administrator
+          5. Open iOS app and connect!
+          
+          ## What's Included
+          - Unsigned IPA for sideloading
+          - Compatible with iOS 17.0+
+          - Apple Pencil pressure support
+          - Real-time screen mirroring
+          
+          Build date: $CM_BUILD_DATE
       
       # Uncomment below to enable Slack notifications (optional)
       # slack:
