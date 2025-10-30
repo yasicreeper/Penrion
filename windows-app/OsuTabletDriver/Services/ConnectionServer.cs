@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using OsuTabletDriver.Services;
 
 namespace OsuTabletDriver
 {
@@ -15,11 +16,13 @@ namespace OsuTabletDriver
         private readonly int _port;
         private readonly VirtualTabletDriver _driver;
         private readonly ScreenCaptureService _screenCapture;
+        private readonly ConnectionHistory _connectionHistory;
         private TcpListener? _listener;
         private TcpClient? _client;
         private NetworkStream? _stream;
         private CancellationTokenSource? _cts;
         private bool _isRunning = false;
+        private string? _currentClientIp;
 
         // Performance metrics
         private readonly Queue<DateTime> _touchTimestamps = new Queue<DateTime>();
@@ -38,6 +41,21 @@ namespace OsuTabletDriver
             _port = port;
             _driver = driver;
             _screenCapture = screenCapture;
+            _connectionHistory = new ConnectionHistory();
+            
+            // Print saved connections on startup
+            var savedConnections = _connectionHistory.GetSavedConnections();
+            if (savedConnections.Any())
+            {
+                Console.WriteLine($"\n📋 {savedConnections.Count} saved connection(s):");
+                foreach (var conn in savedConnections)
+                {
+                    var status = conn.IsOnline ? "🟢 ONLINE" : "⚫ offline";
+                    var lastSeen = (DateTime.Now - conn.LastConnected).TotalMinutes;
+                    Console.WriteLine($"  {status} {conn.DeviceName} ({conn.IpAddress}) - Last: {lastSeen:F0}m ago");
+                }
+                Console.WriteLine();
+            }
         }
 
         public void Start()
@@ -76,15 +94,24 @@ namespace OsuTabletDriver
                         _stream = _client.GetStream();
 
                         var clientEndpoint = _client.Client.RemoteEndPoint?.ToString() ?? "Unknown";
-                        Console.WriteLine($"Client connected: {clientEndpoint}");
+                        _currentClientIp = clientEndpoint.Split(':')[0]; // Extract IP without port
+                        
+                        Console.WriteLine($"✅ Client connected: {clientEndpoint}");
                         ClientConnected?.Invoke(this, clientEndpoint);
+                        
+                        // Save connection to history
+                        _connectionHistory.SaveConnection(_currentClientIp, "iPad");
 
                         // Handle client communication
                         await HandleClient(token);
                     }
                     catch (Exception ex) when (!token.IsCancellationRequested)
                     {
-                        Console.WriteLine($"Client error: {ex.Message}");
+                        Console.WriteLine($"❌ Client error: {ex.Message}");
+                        if (_currentClientIp != null)
+                        {
+                            _connectionHistory.UpdateOnlineStatus(_currentClientIp, false);
+                        }
                         ClientDisconnected?.Invoke(this, EventArgs.Empty);
                     }
                 }
@@ -175,6 +202,9 @@ namespace OsuTabletDriver
                         break;
                     case "settings":
                         HandleSettingsMessage(message);
+                        break;
+                    case "heartbeat":
+                        HandleHeartbeat(message);
                         break;
                 }
             }
@@ -297,6 +327,15 @@ namespace OsuTabletDriver
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Handle settings error: {ex.Message}");
+            }
+        }
+
+        private void HandleHeartbeat(Dictionary<string, object> message)
+        {
+            // Update online status for current client
+            if (_currentClientIp != null)
+            {
+                _connectionHistory.UpdateOnlineStatus(_currentClientIp, true);
             }
         }
     }
