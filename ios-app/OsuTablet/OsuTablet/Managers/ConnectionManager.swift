@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import Combine
+import UIKit
 
 class ConnectionManager: ObservableObject {
     @Published var isConnected = false

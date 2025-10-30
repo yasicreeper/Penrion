@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import UIKit
 
 struct ScreenMirrorView: View {
     @EnvironmentObject var connectionManager: ConnectionManager
