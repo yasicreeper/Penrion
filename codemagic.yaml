@@ -12,6 +12,8 @@ workflows:
       vars:
         XCODE_PROJECT: "ios-app/OsuTablet/OsuTablet.xcodeproj"
         XCODE_SCHEME: "OsuTablet"
+        FIREBASE_SERVICE_ACCOUNT: $FIREBASE_SERVICE_ACCOUNT
+        FIREBASE_APP_ID: $FIREBASE_APP_ID
       xcode: 15.0
     scripts:
       - name: Set up build environment
@@ -165,6 +167,8 @@ workflows:
       vars:
         XCODE_PROJECT: "ios-app/OsuTablet/OsuTablet.xcodeproj"
         XCODE_SCHEME: "OsuTablet"
+        FIREBASE_SERVICE_ACCOUNT: $FIREBASE_SERVICE_ACCOUNT
+        FIREBASE_APP_ID: $FIREBASE_APP_ID
       xcode: 15.0
     scripts:
       - name: Set up build environment
