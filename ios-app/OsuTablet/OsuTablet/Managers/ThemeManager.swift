@@ -6,6 +6,11 @@ class ThemeManager: ObservableObject {
     
     private let themeKey = "selectedTheme"
     
+    var selectedTheme: Theme {
+        get { currentTheme }
+        set { setTheme(newValue) }
+    }
+    
     init() {
         loadTheme()
     }
@@ -34,6 +39,10 @@ enum Theme: String, CaseIterable, Identifiable {
     case matrix = "Matrix"
     
     var id: String { rawValue }
+    
+    var displayName: String {
+        return rawValue
+    }
     
     var backgroundColor: [Color] {
         switch self {

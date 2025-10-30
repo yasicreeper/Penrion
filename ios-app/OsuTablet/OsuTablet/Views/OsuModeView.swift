@@ -4,55 +4,157 @@ struct OsuModeView: View {
     @EnvironmentObject var connectionManager: ConnectionManager
     @EnvironmentObject var touchManager: TouchManager
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var statsTracker: StatsTracker
+    
     @State private var touches: [String: CGPoint] = [:]
     @State private var showStats = false
+    @State private var lastActivityTime = Date()
+    @State private var showAlwaysOnDisplay = false
+    @State private var inactivityTimer: Timer?
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.1, green: 0.1, blue: 0.2),
-                        Color.black
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .edgesIgnoringSafeArea(.all)
-                
-                // Active area visualization
-                if settingsManager.showActiveArea {
-                    Rectangle()
-                        .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-                        .frame(
-                            width: geometry.size.width * settingsManager.activeAreaWidth,
-                            height: geometry.size.height * settingsManager.activeAreaHeight
-                        )
-                }
-                
-                // Touch visualization
-                ForEach(Array(touches.keys), id: \.self) { key in
-                    if let point = touches[key] {
-                        Circle()
-                            .fill(Color.blue.opacity(0.6))
-                            .frame(width: 60, height: 60)
-                            .position(point)
-                            .shadow(color: .blue, radius: 20)
-                            .transition(.scale.combined(with: .opacity))
-                    }
-                }
-                
-                // Stats overlay
-                if showStats {
+                if showAlwaysOnDisplay && settingsManager.alwaysOnDisplay {
+                    // Always-On Display
+                    AlwaysOnDisplayView()
+                        .onTapGesture {
+                            withAnimation {
+                                showAlwaysOnDisplay = false
+                                lastActivityTime = Date()
+                            }
+                        }
+                } else if settingsManager.blackScreenMode {
+                    // Black Screen Mode (battery saver)
+                    Color.black
+                        .edgesIgnoringSafeArea(.all)
+                        .onTapGesture {
+                            settingsManager.blackScreenMode = false
+                        }
+                    
+                    // Small indicator that screen is active
                     VStack {
                         Spacer()
-                        StatsOverlay()
-                            .padding()
+                        HStack {
+                            Text("Tap to show screen")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.3))
+                                .padding()
+                            Spacer()
+                        }
+                    }
+                } else {
+                    // Normal OSU! Mode
+                    mainContent(geometry: geometry)
+                }
+                
+                // Fullscreen exit button (top left, small)
+                if settingsManager.fullscreenMode {
+                    VStack {
+                        HStack {
+                            Button(action: {
+                                withAnimation {
+                                    settingsManager.fullscreenMode = false
+                                }
+                            }) {
+                                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .padding(6)
+                                    .background(Color.black.opacity(0.3))
+                                    .cornerRadius(6)
+                            }
+                            Spacer()
+                        }
+                        .padding(8)
+                        Spacer()
                     }
                 }
                 
-                // Corner indicators
+                // Black Screen Toggle Button (bottom left)
+                if !settingsManager.fullscreenMode && settingsManager.blackScreenButtonEnabled {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Button(action: {
+                                withAnimation {
+                                    settingsManager.blackScreenMode.toggle()
+                                }
+                            }) {
+                                Image(systemName: settingsManager.blackScreenMode ? "sun.max.fill" : "moon.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.white)
+                                    .padding(10)
+                                    .background(themeManager.currentTheme.accentColor.opacity(0.8))
+                                    .cornerRadius(10)
+                                    .shadow(color: themeManager.currentTheme.accentColor.opacity(0.5), radius: 10)
+                            }
+                            Spacer()
+                        }
+                        .padding()
+                    }
+                }
+            }
+        }
+        .edgesIgnoringSafeArea(settingsManager.fullscreenMode ? .all : .bottom)
+        .onAppear {
+            touchManager.setConnectionManager(connectionManager)
+            statsTracker.startSession()
+            setupInactivityMonitor()
+            setupScreenLock()
+            print("✅ OsuModeView appeared - Full setup complete")
+        }
+        .onDisappear {
+            statsTracker.endSession()
+            inactivityTimer?.invalidate()
+        }
+    }
+    
+    @ViewBuilder
+    private func mainContent(geometry: GeometryProxy) -> some View {
+        ZStack {
+            // Themed background gradient
+            LinearGradient(
+                gradient: Gradient(colors: themeManager.currentTheme.backgroundColor),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .edgesIgnoringSafeArea(.all)
+            
+            // Active area visualization
+            if settingsManager.showActiveArea {
+                Rectangle()
+                    .stroke(themeManager.currentTheme.accentColor.opacity(0.5), lineWidth: 2)
+                    .frame(
+                        width: geometry.size.width * settingsManager.activeAreaWidth,
+                        height: geometry.size.height * settingsManager.activeAreaHeight
+                    )
+            }
+            
+            // Touch visualization with themed colors
+            ForEach(Array(touches.keys), id: \.self) { key in
+                if let point = touches[key] {
+                    Circle()
+                        .fill(themeManager.currentTheme.touchColor.opacity(0.6))
+                        .frame(width: 60, height: 60)
+                        .position(point)
+                        .shadow(color: themeManager.currentTheme.touchColor, radius: 20)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            
+            // Stats overlay
+            if showStats {
+                VStack {
+                    Spacer()
+                    StatsOverlay()
+                        .padding()
+                }
+            }
+            
+            // Corner indicators (hidden in fullscreen)
+            if !settingsManager.fullscreenMode {
                 VStack {
                     HStack {
                         // Connection indicator
@@ -70,6 +172,29 @@ struct OsuModeView: View {
                         
                         Spacer()
                         
+                        // Pro mode indicator
+                        if settingsManager.osuProMode {
+                            Text("PRO")
+                                .font(.caption.bold())
+                                .foregroundColor(themeManager.currentTheme.accentColor)
+                                .padding(8)
+                                .background(Color.black.opacity(0.5))
+                                .cornerRadius(8)
+                        }
+                        
+                        // Fullscreen toggle
+                        Button(action: {
+                            withAnimation {
+                                settingsManager.fullscreenMode.toggle()
+                            }
+                        }) {
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.black.opacity(0.5))
+                                .cornerRadius(8)
+                        }
+                        
                         // Stats toggle
                         Button(action: { showStats.toggle() }) {
                             Image(systemName: "chart.bar.fill")
@@ -82,31 +207,56 @@ struct OsuModeView: View {
                     .padding()
                     Spacer()
                 }
-                
-                // Invisible overlay for touch handling
-                TouchHandlingView(
-                    geometry: geometry,
-                    touches: $touches,
-                    onTouch: { id, location, pressure, phase in
-                        let normalizedPoint = normalizePoint(location, in: geometry.size)
-                        touchManager.handleTouch(
-                            id: id,
-                            location: normalizedPoint,
-                            pressure: pressure,
-                            phase: phase
-                        )
+            }
+            
+            // Invisible overlay for touch handling
+            TouchHandlingView(
+                geometry: geometry,
+                touches: $touches,
+                onTouch: { id, location, pressure, phase in
+                    // Reset inactivity timer on touch
+                    lastActivityTime = Date()
+                    showAlwaysOnDisplay = false
+                    
+                    // Track touch in stats
+                    if phase == .began {
+                        statsTracker.recordTouch()
                     }
-                )
+                    
+                    let normalizedPoint = normalizePoint(location, in: geometry.size)
+                    touchManager.handleTouch(
+                        id: id,
+                        location: normalizedPoint,
+                        pressure: pressure,
+                        phase: phase
+                    )
+                }
+            )
+        }
+    }
+    
+    private func setupInactivityMonitor() {
+        inactivityTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            let idleTime = Date().timeIntervalSince(lastActivityTime)
+            if idleTime >= settingsManager.inactivityTimeout && settingsManager.alwaysOnDisplay {
+                withAnimation {
+                    showAlwaysOnDisplay = true
+                }
             }
         }
-        .onAppear {
-            touchManager.setConnectionManager(connectionManager)
-            print("✅ OsuModeView appeared - TouchManager connected")
+    }
+    
+    private func setupScreenLock() {
+        if settingsManager.keepScreenOn {
+            UIApplication.shared.isIdleTimerDisabled = true
+            print("✅ Screen lock disabled - screen will stay on")
+        } else {
+            UIApplication.shared.isIdleTimerDisabled = false
         }
     }
     
     private func normalizePoint(_ point: CGPoint, in size: CGSize) -> CGPoint {
-        // Normalize to 0-1 range
+        // Normalize to 0-1 range, considering OSU window size preset
         let x = max(0, min(1, point.x / size.width))
         let y = max(0, min(1, point.y / size.height))
         return CGPoint(x: x, y: y)

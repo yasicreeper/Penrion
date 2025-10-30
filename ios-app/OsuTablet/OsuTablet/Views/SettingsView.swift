@@ -2,11 +2,45 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var statsTracker: StatsTracker
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationView {
             Form {
+                // ===== DISPLAY SECTION =====
+                Section(header: Text("Display")) {
+                    Toggle("Black Screen Mode", isOn: $settingsManager.blackScreenMode)
+                    Toggle("Show Black Screen Button", isOn: $settingsManager.blackScreenButtonEnabled)
+                    Toggle("Always-On Display", isOn: $settingsManager.alwaysOnDisplay)
+                    Toggle("Fullscreen Mode", isOn: $settingsManager.fullscreenMode)
+                    Toggle("Keep Screen On", isOn: $settingsManager.keepScreenOn)
+                    
+                    if settingsManager.alwaysOnDisplay {
+                        VStack(alignment: .leading) {
+                            Text("Inactivity Timeout: \(Int(settingsManager.inactivityTimeout / 60)) minutes")
+                            Slider(value: $settingsManager.inactivityTimeout, in: 60...600, step: 60)
+                        }
+                    }
+                }
+                
+                // ===== THEME SECTION =====
+                Section(header: Text("Theme")) {
+                    Picker("Visual Theme", selection: $themeManager.selectedTheme) {
+                        ForEach(Theme.allCases, id: \.self) { theme in
+                            HStack {
+                                Circle()
+                                    .fill(theme.accentColor)
+                                    .frame(width: 20, height: 20)
+                                Text(theme.displayName)
+                            }
+                            .tag(theme)
+                        }
+                    }
+                }
+                
+                // ===== ACTIVE AREA SECTION =====
                 Section(header: Text("Active Area")) {
                     VStack(alignment: .leading) {
                         Text("Width: \(Int(settingsManager.activeAreaWidth * 100))%")
@@ -21,6 +55,19 @@ struct SettingsView: View {
                     Toggle("Show Area Outline", isOn: $settingsManager.showActiveArea)
                 }
                 
+                // ===== OSU! MODE SECTION =====
+                Section(header: Text("OSU! Mode")) {
+                    Picker("Window Size Preset", selection: $settingsManager.osuWindowSize) {
+                        ForEach([OsuWindowSize.tiny, .small, .medium, .large, .pro], id: \.self) { size in
+                            Text(size.displayName).tag(size)
+                        }
+                    }
+                    
+                    Toggle("Pro Mode Settings", isOn: $settingsManager.osuProMode)
+                        .help("Enables optimized settings for competitive play")
+                }
+                
+                // ===== PRESSURE SENSITIVITY SECTION =====
                 Section(header: Text("Pressure Sensitivity")) {
                     Picker("Curve Type", selection: $settingsManager.pressureCurve) {
                         Text("Linear").tag(PressureCurve.linear)
@@ -35,12 +82,14 @@ struct SettingsView: View {
                     }
                 }
                 
+                // ===== TOUCH FEEDBACK SECTION =====
                 Section(header: Text("Touch Feedback")) {
                     Toggle("Visual Feedback", isOn: $settingsManager.visualFeedback)
                     Toggle("Haptic Feedback", isOn: $settingsManager.hapticFeedback)
                     Toggle("Sound Effects", isOn: $settingsManager.soundEffects)
                 }
                 
+                // ===== NETWORK SECTION =====
                 Section(header: Text("Network")) {
                     HStack {
                         Text("Port")
@@ -54,26 +103,53 @@ struct SettingsView: View {
                     Toggle("Auto-Reconnect", isOn: $settingsManager.autoReconnect)
                 }
                 
+                // ===== SCREEN MIRRORING SECTION =====
                 Section(header: Text("Screen Mirroring")) {
                     Picker("Quality", selection: $settingsManager.streamQuality) {
+                        Text("Very Low (144p) - Ultra Fast").tag(StreamQuality.veryLow)
                         Text("Low (720p)").tag(StreamQuality.low)
                         Text("Medium (1080p)").tag(StreamQuality.medium)
                         Text("High (1440p)").tag(StreamQuality.high)
                     }
                     
                     Toggle("Low Latency Mode", isOn: $settingsManager.lowLatencyMode)
+                    Toggle("Very Low Latency Mode (144p)", isOn: $settingsManager.veryLowLatencyMode)
+                        .onChange(of: settingsManager.veryLowLatencyMode) { newValue in
+                            if newValue {
+                                settingsManager.streamQuality = .veryLow
+                                settingsManager.lowLatencyMode = true
+                            }
+                        }
                 }
                 
+                // ===== PERFORMANCE SECTION =====
                 Section(header: Text("Performance")) {
                     Toggle("Performance Mode", isOn: $settingsManager.performanceMode)
                     Toggle("Battery Saver", isOn: $settingsManager.batterySaver)
                     
                     VStack(alignment: .leading) {
-                        Text("Touch Rate: \(settingsManager.touchRate) Hz")
+                        Text("Touch Rate: \(Int(settingsManager.touchRate)) Hz")
                         Slider(value: $settingsManager.touchRate, in: 60...240, step: 60)
                     }
                 }
                 
+                // ===== STATISTICS SECTION =====
+                Section(header: Text("Statistics")) {
+                    NavigationLink(destination: StatsView()) {
+                        HStack {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .foregroundColor(themeManager.currentTheme.accentColor)
+                            Text("View Detailed Stats")
+                        }
+                    }
+                    
+                    Button("Reset Statistics") {
+                        statsTracker.resetStats()
+                    }
+                    .foregroundColor(.orange)
+                }
+                
+                // ===== CALIBRATION SECTION =====
                 Section(header: Text("Calibration")) {
                     Button("Calibrate Tablet Area") {
                         // TODO: Show calibration wizard
@@ -85,6 +161,7 @@ struct SettingsView: View {
                     .foregroundColor(.red)
                 }
                 
+                // ===== ABOUT SECTION =====
                 Section(header: Text("About")) {
                     HStack {
                         Text("Version")
@@ -100,7 +177,7 @@ struct SettingsView: View {
                             .foregroundColor(.gray)
                     }
                     
-                    Link("GitHub Repository", destination: URL(string: "https://github.com/yourusername/penrion")!)
+                    Link("GitHub Repository", destination: URL(string: "https://github.com/yasicreeper/Penrion")!)
                 }
             }
             .navigationTitle("Settings")
@@ -121,5 +198,5 @@ enum PressureCurve: String, Codable {
 }
 
 enum StreamQuality: String, Codable {
-    case low, medium, high
+    case veryLow, low, medium, high
 }
