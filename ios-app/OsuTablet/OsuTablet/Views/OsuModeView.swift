@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct OsuModeView: View {
+    @EnvironmentObject var connectionManager: ConnectionManager
     @EnvironmentObject var touchManager: TouchManager
     @EnvironmentObject var settingsManager: SettingsManager
     @State private var touches: [String: CGPoint] = [:]
@@ -54,12 +55,12 @@ struct OsuModeView: View {
                 // Corner indicators
                 VStack {
                     HStack {
-                        // Latency indicator
+                        // Connection indicator
                         HStack(spacing: 5) {
                             Circle()
-                                .fill(touchManager.latency < 10 ? Color.green : Color.orange)
-                                .frame(width: 8, height: 8)
-                            Text("\(Int(touchManager.latency))ms")
+                                .fill(connectionManager.isConnected ? Color.green : Color.red)
+                                .frame(width: 10, height: 10)
+                            Text(connectionManager.isConnected ? "Connected" : "Disconnected")
                                 .foregroundColor(.white)
                                 .font(.caption)
                         }
@@ -81,40 +82,130 @@ struct OsuModeView: View {
                     .padding()
                     Spacer()
                 }
-            }
-            .gesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                    .onChanged { value in
-                        let normalizedPoint = normalizePoint(
-                            value.location,
-                            in: geometry.size
-                        )
-                        touches[value.id] = value.location
+                
+                // Invisible overlay for touch handling
+                TouchHandlingView(
+                    geometry: geometry,
+                    touches: $touches,
+                    onTouch: { id, location, pressure, phase in
+                        let normalizedPoint = normalizePoint(location, in: geometry.size)
                         touchManager.handleTouch(
-                            id: value.id,
+                            id: id,
                             location: normalizedPoint,
-                            pressure: value.pressure,
-                            phase: .moved
+                            pressure: pressure,
+                            phase: phase
                         )
                     }
-                    .onEnded { value in
-                        touches.removeValue(forKey: value.id)
-                        touchManager.handleTouch(
-                            id: value.id,
-                            location: .zero,
-                            pressure: 0,
-                            phase: .ended
-                        )
-                    }
-            )
+                )
+            }
+        }
+        .onAppear {
+            touchManager.setConnectionManager(connectionManager)
+            print("✅ OsuModeView appeared - TouchManager connected")
         }
     }
     
     private func normalizePoint(_ point: CGPoint, in size: CGSize) -> CGPoint {
-        // Normalize to active area
-        let x = point.x / size.width
-        let y = point.y / size.height
+        // Normalize to 0-1 range
+        let x = max(0, min(1, point.x / size.width))
+        let y = max(0, min(1, point.y / size.height))
         return CGPoint(x: x, y: y)
+    }
+}
+
+// UIKit wrapper for proper touch handling
+struct TouchHandlingView: UIViewRepresentable {
+    let geometry: GeometryProxy
+    @Binding var touches: [String: CGPoint]
+    let onTouch: (String, CGPoint, Double, TouchPhase) -> Void
+    
+    func makeUIView(context: Context) -> TouchCaptureView {
+        let view = TouchCaptureView()
+        view.touchHandler = onTouch
+        view.touchesBinding = $touches
+        view.backgroundColor = .clear
+        print("✅ TouchCaptureView created")
+        return view
+    }
+    
+    func updateUIView(_ uiView: TouchCaptureView, context: Context) {
+        uiView.touchHandler = onTouch
+    }
+}
+
+class TouchCaptureView: UIView {
+    var touchHandler: ((String, CGPoint, Double, TouchPhase) -> Void)?
+    var touchesBinding: Binding<[String: CGPoint]>?
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isMultipleTouchEnabled = true
+        isUserInteractionEnabled = true
+        print("✅ TouchCaptureView initialized - multitouch enabled")
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        print("👆 Touches began: \(touches.count)")
+        handleTouches(touches, phase: .began)
+    }
+    
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        handleTouches(touches, phase: .moved)
+    }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        print("👆 Touches ended: \(touches.count)")
+        handleTouches(touches, phase: .ended)
+        // Remove from visualization
+        for touch in touches {
+            let id = "\(touch.hash)"
+            DispatchQueue.main.async {
+                self.touchesBinding?.wrappedValue.removeValue(forKey: id)
+            }
+        }
+    }
+    
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        print("👆 Touches cancelled: \(touches.count)")
+        handleTouches(touches, phase: .cancelled)
+        // Remove from visualization
+        for touch in touches {
+            let id = "\(touch.hash)"
+            DispatchQueue.main.async {
+                self.touchesBinding?.wrappedValue.removeValue(forKey: id)
+            }
+        }
+    }
+    
+    private func handleTouches(_ touches: Set<UITouch>, phase: TouchPhase) {
+        for touch in touches {
+            let location = touch.location(in: self)
+            let id = "\(touch.hash)"
+            
+            // Calculate pressure (Apple Pencil or finger)
+            let pressure: Double
+            if touch.type == .pencil || touch.type == .stylus {
+                // Apple Pencil provides actual pressure
+                pressure = touch.force > 0 ? Double(touch.force / touch.maximumPossibleForce) : 1.0
+                print("✏️ Apple Pencil pressure: \(pressure)")
+            } else {
+                // Finger touch defaults to 1.0
+                pressure = 1.0
+            }
+            
+            // Update visualization
+            DispatchQueue.main.async {
+                self.touchesBinding?.wrappedValue[id] = location
+            }
+            
+            // Send to handler
+            print("📤 Sending touch: id=\(id), location=(\(location.x), \(location.y)), pressure=\(pressure), phase=\(phase)")
+            touchHandler?(id, location, pressure, phase)
+        }
     }
 }
 
@@ -150,16 +241,5 @@ struct StatRow: View {
                 .fontWeight(.semibold)
         }
         .frame(width: 150)
-    }
-}
-
-extension DragGesture.Value {
-    var id: String {
-        return "\(self.startLocation.x)-\(self.startLocation.y)"
-    }
-    
-    var pressure: Double {
-        // iOS doesn't expose pressure in DragGesture, would need UITouch
-        return 1.0
     }
 }
