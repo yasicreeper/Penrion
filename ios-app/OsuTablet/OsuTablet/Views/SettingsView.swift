@@ -4,10 +4,13 @@ struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var connectionManager: ConnectionManager
     @Environment(\.dismiss) var dismiss
+    @State private var showResetConfirm = false
+    @State private var showSaveToast = false
     
     var body: some View {
-        NavigationView {
-            Form {
+        ZStack {
+            NavigationView {
+                Form {
                 // ===== DISPLAY SECTION =====
                 Section(header: Text("Display")) {
                     Toggle("Black Screen Mode", isOn: $settingsManager.blackScreenMode)
@@ -159,16 +162,45 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(role: .destructive, action: { showResetConfirm = true }) {
+                        Label("Reset", systemImage: "arrow.counterclockwise")
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         // Send updated settings to Windows before closing
                         if connectionManager.isConnected {
                             connectionManager.sendSettings(settingsManager)
+                            showSaveToast = true
                         }
-                        dismiss()
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            dismiss()
+                        }
                     }
                 }
             }
+            .confirmationDialog("Reset All Settings?", isPresented: $showResetConfirm, titleVisibility: .visible) {
+                Button("Reset to Defaults", role: .destructive) {
+                    settingsManager.resetToDefaults()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will reset all settings to their default values. This action cannot be undone.")
+            }
+        }
+        
+        // Saving Indicator Overlay
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                SavingIndicator(isSaving: settingsManager.isSaving)
+                    .padding()
+            }
         }
     }
-}
+        .toast(message: "Settings Saved!", type: .success, isShowing: $showSaveToast)
+    }
