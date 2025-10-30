@@ -41,6 +41,34 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXSourcesBuildPhase section */
+		Sources1 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FileRef1 /* OsuTabletApp.swift */,
+				FileRef3 /* ContentView.swift */,
+				FileRef5 /* ConnectionView.swift */,
+				FileRef7 /* OsuModeView.swift */,
+				FileRef9 /* ScreenMirrorView.swift */,
+				FileRef11 /* SettingsView.swift */,
+				FileRef13 /* ConnectionManager.swift */,
+				FileRef15 /* TouchManager.swift */,
+				FileRef17 /* SettingsManager.swift */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		Resources1 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXGroup section */
 		GroupMain = {
 			isa = PBXGroup;
@@ -90,7 +118,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = ConfigList1;
 			buildPhases = (
+				Sources1,
 				Frameworks1,
+				Resources1,
 			);
 			buildRules = ();
 			dependencies = ();

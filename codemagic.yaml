@@ -66,73 +66,47 @@ workflows:
           set -euo pipefail
           cd ios-app/OsuTablet
 
-          echo "Searching for .app bundle..."
-          echo "Current directory: $(pwd)"
-          echo "Contents of build/DerivedData:"
-          ls -la build/DerivedData || echo "build/DerivedData not found"
-          
-          # Search all possible locations
-          echo "Searching for .app files:"
-          find build -name "*.app" -type d 2>/dev/null | head -10 || echo "No .app found in build directory"
-          
-          # Try local DerivedData first
-          LOCAL_APP_PATH=$(find build/DerivedData -name "*.app" -type d 2>/dev/null | head -1 || true)
+      - name: Create unsigned IPA package
+        script: |
+          set -euo pipefail
+          cd ios-app/OsuTablet
 
+          echo "Searching for .app bundle..."
+          find build -name "*.app" -type d 2>/dev/null | head -10 || echo "No .app found"
+          
+          LOCAL_APP_PATH=$(find build -name "*.app" -type d 2>/dev/null | head -1 || true)
           if [ -n "$LOCAL_APP_PATH" ] && [ -d "$LOCAL_APP_PATH" ]; then
             APP_PATH="$LOCAL_APP_PATH"
-            echo "Using local .app: $APP_PATH"
+            echo "Found .app at: $APP_PATH"
           else
-            echo "No local .app found, trying xcodebuild settings..."
-            # Get build settings
-            APP_DIR=$(xcodebuild \
-              -project OsuTablet.xcodeproj \
-              -scheme "$XCODE_SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -showBuildSettings 2>/dev/null | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1 || true)
-
-            WRAPPER_NAME=$(xcodebuild \
-              -project OsuTablet.xcodeproj \
-              -scheme "$XCODE_SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -showBuildSettings 2>/dev/null | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1 || true)
-
-            if [ -n "$APP_DIR" ] && [ -n "$WRAPPER_NAME" ]; then
-              APP_PATH="$APP_DIR/$WRAPPER_NAME"
-              echo "Computed APP_PATH from build settings: $APP_PATH"
-            else
-              echo "❌ Could not determine APP_PATH from build settings"
-              APP_PATH=""
-            fi
-          fi
-
-          echo "Final APP_PATH=$APP_PATH"
-
-          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-            echo "❌ Error: Could not find built .app directory"
-            echo "All .app candidates found:"
-            find / -name "OsuTablet.app" -type d 2>/dev/null | head -5 || echo "No OsuTablet.app found anywhere"
+            echo "❌ No .app bundle found in build directory"
             exit 1
           fi
 
-          # Verify .app structure
+          # Verify .app structure and binary
           echo "Verifying .app structure:"
-          ls -la "$APP_PATH" | head -5
+          ls -la "$APP_PATH"
+          
+          # Check if executable exists
+          APP_NAME=$(basename "$APP_PATH" .app)
+          EXECUTABLE_PATH="$APP_PATH/$APP_NAME"
+          
+          if [ ! -f "$EXECUTABLE_PATH" ]; then
+            echo "❌ Error: Missing executable binary at $EXECUTABLE_PATH"
+            echo "This indicates the build did not compile properly."
+            exit 1
+          fi
+          
+          echo "✓ Found executable: $EXECUTABLE_PATH"
 
-          # Prepare Payload and create IPA
           rm -rf build/Payload
           mkdir -p build/Payload
           cp -R "$APP_PATH" build/Payload/
 
           cd build
           zip -qry Penrion-OsuTablet-Unsigned.ipa Payload
-
-          # Move IPA to repo release directory
           mkdir -p ../../release/ios
           mv -f Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
-
-          echo "✓ IPA created at: $(pwd)/../../release/ios/Penrion-OsuTablet-Unsigned.ipa"
 
       - name: Verify IPA
         script: |
@@ -218,14 +192,30 @@ workflows:
           LOCAL_APP_PATH=$(find build -name "*.app" -type d 2>/dev/null | head -1 || true)
           if [ -n "$LOCAL_APP_PATH" ] && [ -d "$LOCAL_APP_PATH" ]; then
             APP_PATH="$LOCAL_APP_PATH"
-            echo "Using: $APP_PATH"
+            echo "Found .app at: $APP_PATH"
           else
             echo "❌ No .app bundle found in build directory"
             exit 1
           fi
 
-          # Verify .app structure
-          ls -la "$APP_PATH" | head -5
+          # Verify .app structure and binary
+          echo "Verifying .app structure:"
+          ls -la "$APP_PATH"
+          
+          # Check if executable exists
+          APP_NAME=$(basename "$APP_PATH" .app)
+          EXECUTABLE_PATH="$APP_PATH/$APP_NAME"
+          
+          if [ ! -f "$EXECUTABLE_PATH" ]; then
+            echo "❌ Error: Missing executable binary at $EXECUTABLE_PATH"
+            echo "This indicates the build did not compile properly."
+            echo "Contents of .app:"
+            find "$APP_PATH" -type f | head -10
+            exit 1
+          fi
+          
+          echo "✓ Found executable: $EXECUTABLE_PATH"
+          file "$EXECUTABLE_PATH" | head -1
 
           rm -rf build/Payload
           mkdir -p build/Payload
@@ -235,6 +225,8 @@ workflows:
           zip -qry Penrion-OsuTablet-Unsigned.ipa Payload
           mkdir -p ../../release/ios
           mv -f Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+          
+          echo "✓ IPA created successfully"
       - name: Verify IPA
         script: |
           set -euo pipefail
