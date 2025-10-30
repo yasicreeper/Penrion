@@ -28,6 +28,7 @@ namespace OsuTabletDriver
         private readonly Queue<DateTime> _touchTimestamps = new Queue<DateTime>();
         private readonly Queue<double> _latencies = new Queue<double>();
         private const int MaxQueueSize = 100;
+        private System.Timers.Timer? _metricsTimer;
 
         public event EventHandler<string>? ClientConnected;
         public event EventHandler? ClientDisconnected;
@@ -42,6 +43,11 @@ namespace OsuTabletDriver
             _driver = driver;
             _screenCapture = screenCapture;
             _connectionHistory = new ConnectionHistory();
+            
+            // Start metrics update timer (updates touch rate every 100ms)
+            _metricsTimer = new System.Timers.Timer(100);
+            _metricsTimer.Elapsed += (s, e) => UpdateTouchRate();
+            _metricsTimer.Start();
             
             // Print saved connections on startup
             var savedConnections = _connectionHistory.GetSavedConnections();
@@ -76,6 +82,8 @@ namespace OsuTabletDriver
             _stream?.Close();
             _client?.Close();
             _listener?.Stop();
+            _metricsTimer?.Stop();
+            _metricsTimer?.Dispose();
         }
 
         private async Task RunServer(CancellationToken token)
@@ -223,20 +231,23 @@ namespace OsuTabletDriver
                 double pressure = Convert.ToDouble(message["pressure"]);
                 double timestamp = Convert.ToDouble(message["timestamp"]);
 
-                // Calculate latency
+                // Calculate latency (iOS sends Unix timestamp in seconds)
                 var receiveTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
-                double latency = (receiveTime - timestamp) * 1000; // ms
+                double latency = (receiveTime - timestamp) * 1000; // Convert to ms
 
-                _latencies.Enqueue(latency);
-                if (_latencies.Count > MaxQueueSize)
-                    _latencies.Dequeue();
+                // Store latency for averaging
+                lock (_latencies)
+                {
+                    _latencies.Enqueue(latency);
+                    if (_latencies.Count > MaxQueueSize)
+                        _latencies.Dequeue();
+                }
 
-                // Update touch rate
-                var now = DateTime.Now;
-                _touchTimestamps.Enqueue(now);
-                while (_touchTimestamps.Count > 0 && (now - _touchTimestamps.Peek()).TotalSeconds > 1.0)
-                    _touchTimestamps.Dequeue();
-                TouchRate = _touchTimestamps.Count;
+                // Record touch timestamp for rate calculation
+                lock (_touchTimestamps)
+                {
+                    _touchTimestamps.Enqueue(DateTime.Now);
+                }
 
                 // Send to driver
                 var touchData = new TouchData
@@ -336,6 +347,21 @@ namespace OsuTabletDriver
             if (_currentClientIp != null)
             {
                 _connectionHistory.UpdateOnlineStatus(_currentClientIp, true);
+            }
+        }
+
+        private void UpdateTouchRate()
+        {
+            // Calculate touches per second by removing old timestamps
+            lock (_touchTimestamps)
+            {
+                var now = DateTime.Now;
+                var cutoff = now.AddSeconds(-1.0); // Keep last 1 second of touches
+                
+                while (_touchTimestamps.Count > 0 && _touchTimestamps.Peek() < cutoff)
+                    _touchTimestamps.Dequeue();
+                
+                TouchRate = _touchTimestamps.Count;
             }
         }
     }
