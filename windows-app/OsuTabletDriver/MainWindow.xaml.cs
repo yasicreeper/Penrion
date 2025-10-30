@@ -134,6 +134,14 @@ namespace OsuTabletDriver
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Open settings window
+            var settingsWindow = new SettingsWindow(_server);
+            settingsWindow.Owner = this;
+            settingsWindow.ShowDialog();
+        }
+
         protected override void OnClosing(CancelEventArgs e)
         {
             _statsTimer.Stop();

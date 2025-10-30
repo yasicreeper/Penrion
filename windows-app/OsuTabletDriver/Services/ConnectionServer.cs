@@ -33,9 +33,42 @@ namespace OsuTabletDriver
         public event EventHandler<string>? ClientConnected;
         public event EventHandler? ClientDisconnected;
         public event EventHandler<TouchData>? TouchDataReceived;
+        public event EventHandler<dynamic>? SettingsReceived; // NEW: For Windows UI to receive iPad settings
 
         public double AverageLatency => _latencies.Count > 0 ? _latencies.Average() : 0;
         public int TouchRate { get; private set; }
+
+        // NEW: Method to send settings TO iPad from Windows
+        public void SendSettingsToiPad(object settings)
+        {
+            if (_stream == null || !_client?.Connected == true)
+            {
+                Console.WriteLine("❌ Cannot send settings: No iPad connected");
+                return;
+            }
+
+            try
+            {
+                var json = JsonConvert.SerializeObject(settings);
+                var jsonBytes = Encoding.UTF8.GetBytes(json);
+
+                // Add length header
+                var lengthBytes = BitConverter.GetBytes(jsonBytes.Length);
+                if (BitConverter.IsLittleEndian)
+                    Array.Reverse(lengthBytes);
+
+                // Send length + data
+                _stream.Write(lengthBytes, 0, 4);
+                _stream.Write(jsonBytes, 0, jsonBytes.Length);
+                _stream.Flush();
+
+                Console.WriteLine($"📤 Sent settings to iPad: {json.Length} bytes");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Failed to send settings to iPad: {ex.Message}");
+            }
+        }
 
         public ConnectionServer(int port, VirtualTabletDriver driver, ScreenCaptureService screenCapture)
         {
@@ -338,6 +371,9 @@ namespace OsuTabletDriver
                 _driver.SetTargetTouchRate(touchRate);
                 
                 Console.WriteLine($"✅ Settings applied: {touchRate}Hz @ {finalFPS}FPS with {quality}");
+
+                // NEW: Fire event so Windows UI can display iPad settings
+                SettingsReceived?.Invoke(this, message);
             }
             catch (Exception ex)
             {
