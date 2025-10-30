@@ -116,7 +116,11 @@ struct SettingsView: View {
                     
                     VStack(alignment: .leading) {
                         Text("Touch Rate: \(Int(settingsManager.touchRate)) Hz")
-                        Slider(value: $settingsManager.touchRate, in: 60...240, step: 60)
+                            .font(.subheadline)
+                        Slider(value: $settingsManager.touchRate, in: 60...200, step: 20)
+                        Text("Recommended: 120Hz for balanced performance")
+                            .font(.caption)
+                            .foregroundColor(.gray)
                     }
                 }
                 
@@ -189,6 +193,30 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) { }
             } message: {
                 Text("This will reset all settings to their default values. This action cannot be undone.")
+            }
+            
+            // Show loading indicator when sending settings
+            if settingsManager.isSaving {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        SavingIndicator(isSaving: settingsManager.isSaving)
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 20)
+                    }
+                }
+                .transition(.scale.combined(with: .opacity))
+                .animation(.spring(), value: settingsManager.isSaving)
+            }
+            
+            // Show toast when settings saved
+            if showSaveToast {
+                VStack {
+                    ToastView(message: "Settings Saved!", type: .success, isShowing: $showSaveToast)
+                        .padding(.top, 50)
+                    Spacer()
+                }
             }
             }
         }

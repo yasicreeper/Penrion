@@ -245,6 +245,11 @@ class ConnectionManager: ObservableObject {
             return
         }
         
+        // Show loading state
+        DispatchQueue.main.async {
+            settingsManager.isSaving = true
+        }
+        
         // Calculate FPS based on performance mode with intelligent scaling
         let targetFPS = settingsManager.veryLowLatencyMode ? 144 : (settingsManager.performanceMode ? 120 : 90)
         
@@ -276,6 +281,11 @@ class ConnectionManager: ObservableObject {
             message = lengthData + jsonData
             
             connection.send(content: message, completion: .contentProcessed({ error in
+                // Hide loading state
+                DispatchQueue.main.async {
+                    settingsManager.isSaving = false
+                }
+                
                 if let error = error {
                     print("❌ Settings send error: \(error)")
                 } else {

@@ -25,7 +25,7 @@ class SettingsManager: ObservableObject {
     
     @Published var performanceMode: Bool = true { didSet { save("performanceMode", performanceMode) } }
     @Published var batterySaver: Bool = false { didSet { save("batterySaver", batterySaver) } }
-    @Published var touchRate: Double = 120.0 { didSet { save("touchRate", touchRate) } } // Realistic: 60-200Hz
+    @Published var touchRate: Double = 120.0 { didSet { save("touchRate", touchRate) } } // Realistic: 60-200Hz (iPad screen limited)
     
     // Display features
     @Published var blackScreenMode: Bool = false { didSet { save("blackScreenMode", blackScreenMode) } }
@@ -189,7 +189,7 @@ class SettingsManager: ObservableObject {
         lowLatencyMode = true
         performanceMode = true
         batterySaver = false
-        touchRate = 500.0
+        touchRate = 120.0 // Default to 120Hz (middle of 60-200 range)
         veryLowLatencyMode = true
     }
     
