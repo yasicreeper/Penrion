@@ -97,7 +97,7 @@ struct SettingsView: View {
                     
                     Toggle("Low Latency Mode", isOn: $settingsManager.lowLatencyMode)
                     Toggle("Very Low Latency Mode (144p)", isOn: $settingsManager.veryLowLatencyMode)
-                        .onChange(of: settingsManager.veryLowLatencyMode) { newValue in
+                        .onChange(of: settingsManager.veryLowLatencyMode) { oldValue, newValue in
                             if newValue {
                                 settingsManager.streamQuality = .veryLow
                                 settingsManager.lowLatencyMode = true
