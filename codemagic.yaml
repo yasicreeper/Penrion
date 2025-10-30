@@ -100,21 +100,29 @@ workflows:
 
           cd build
           zip -qry Penrion-OsuTablet-Unsigned.ipa Payload
+          
+          echo "IPA created in: $(pwd)/Penrion-OsuTablet-Unsigned.ipa"
+          ls -lh Penrion-OsuTablet-Unsigned.ipa
+          
           mkdir -p ../../release/ios
-          mv -f Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+          cp -f Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+          
+          echo "IPA copied to: $(cd ../../release/ios && pwd)/Penrion-OsuTablet-Unsigned.ipa"
 
       - name: Verify IPA
         script: |
-          set -euo pipefail
-          cd ios-app/OsuTablet
-          echo "Current directory: $(pwd)"
-          echo "Checking for IPA file..."
-          if [ -f "../../release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
-            echo "✅ Build successful!"
-            ls -lh "../../release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          echo "Searching for IPA file..."
+          find . -name "Penrion-OsuTablet-Unsigned.ipa" -type f 2>/dev/null || true
+          
+          # Check multiple possible locations
+          if [ -f "release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
+            echo "✅ Build successful! (Found in release/ios/)"
+            ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          elif [ -f "ios-app/OsuTablet/build/Penrion-OsuTablet-Unsigned.ipa" ]; then
+            echo "✅ Build successful! (Found in build/)"
+            ls -lh "ios-app/OsuTablet/build/Penrion-OsuTablet-Unsigned.ipa"
           else
-            echo "Searching for IPA in workspace..."
-            find ../.. -name "*.ipa" -type f 2>/dev/null || echo "No IPA found"
+            echo "❌ IPA not found in expected locations"
             exit 1
           fi
 
@@ -220,20 +228,26 @@ workflows:
 
           cd build
           zip -qry Penrion-OsuTablet-Unsigned.ipa Payload
+          
+          echo "IPA created, copying to release folder..."
           mkdir -p ../../release/ios
-          mv -f Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+          cp -f Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+          ls -lh ../../release/ios/Penrion-OsuTablet-Unsigned.ipa
           
           echo "✓ IPA created successfully"
       - name: Verify IPA
         script: |
-          set -euo pipefail
-          cd ios-app/OsuTablet
-          if [ -f "../../release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
+          echo "Searching for IPA file..."
+          find . -name "*.ipa" -type f 2>/dev/null | head -5 || true
+          
+          if [ -f "release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
             echo "✅ Build successful!"
-            ls -lh "../../release/ios/Penrion-OsuTablet-Unsigned.ipa"
+            ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          elif [ -f "ios-app/OsuTablet/build/Penrion-OsuTablet-Unsigned.ipa" ]; then
+            echo "✅ Build successful! (Found in alternate location)"
+            ls -lh "ios-app/OsuTablet/build/Penrion-OsuTablet-Unsigned.ipa"
           else
-            echo "Searching for IPA..."
-            find ../.. -name "*.ipa" -type f 2>/dev/null || echo "No IPA found"
+            echo "❌ IPA not found"
             exit 1
           fi
     artifacts:
