@@ -294,58 +294,68 @@ namespace OsuTabletDriver
             {
                 Console.WriteLine("⚙️ Received settings from iPad:");
                 
-                // Extract settings
-                if (message.ContainsKey("streamQuality"))
-                {
-                    string quality = message["streamQuality"].ToString()!;
-                    Console.WriteLine($"  - Stream Quality: {quality}");
-                }
+                // Extract settings with better type handling
+                string quality = message.ContainsKey("streamQuality") ? message["streamQuality"].ToString()! : "Very Low (144p)";
+                bool lowLatency = message.ContainsKey("lowLatencyMode") && Convert.ToBoolean(message["lowLatencyMode"]);
+                bool veryLowLatency = message.ContainsKey("veryLowLatencyMode") && Convert.ToBoolean(message["veryLowLatencyMode"]);
+                int targetFPS = message.ContainsKey("targetFPS") ? Convert.ToInt32(message["targetFPS"]) : 60;
+                int jpegQuality = message.ContainsKey("jpegQuality") ? Convert.ToInt32(message["jpegQuality"]) : 30;
+                double activeAreaWidth = message.ContainsKey("activeAreaWidth") ? Convert.ToDouble(message["activeAreaWidth"]) : 1.0;
+                double activeAreaHeight = message.ContainsKey("activeAreaHeight") ? Convert.ToDouble(message["activeAreaHeight"]) : 1.0;
+                bool perfMode = message.ContainsKey("performanceMode") && Convert.ToBoolean(message["performanceMode"]);
                 
-                if (message.ContainsKey("lowLatencyMode"))
-                {
-                    bool lowLatency = Convert.ToBoolean(message["lowLatencyMode"]);
-                    Console.WriteLine($"  - Low Latency Mode: {lowLatency}");
-                }
-                
-                if (message.ContainsKey("veryLowLatencyMode"))
-                {
-                    bool veryLowLatency = Convert.ToBoolean(message["veryLowLatencyMode"]);
-                    Console.WriteLine($"  - Very Low Latency Mode: {veryLowLatency}");
-                }
-                
-                if (message.ContainsKey("targetFPS"))
-                {
-                    int targetFPS = Convert.ToInt32(message["targetFPS"]);
-                    Console.WriteLine($"  - Target FPS: {targetFPS}");
-                    _screenCapture.SetTargetFPS(targetFPS);
-                }
-                
-                if (message.ContainsKey("jpegQuality"))
-                {
-                    int jpegQuality = Convert.ToInt32(message["jpegQuality"]);
-                    Console.WriteLine($"  - JPEG Quality: {jpegQuality}");
-                    _screenCapture.SetQuality(jpegQuality);
-                }
-                
-                if (message.ContainsKey("performanceMode"))
-                {
-                    bool perfMode = Convert.ToBoolean(message["performanceMode"]);
-                    Console.WriteLine($"  - Performance Mode: {perfMode}");
-                }
-                
+                // Fix: Handle touchRate as either int or double
+                int touchRate = 500; // Default to max performance
                 if (message.ContainsKey("touchRate"))
                 {
-                    double touchRate = Convert.ToDouble(message["touchRate"]);
-                    Console.WriteLine($"  - Touch Rate: {touchRate} Hz");
-                    _driver.SetTargetTouchRate((int)touchRate);
+                    var touchRateValue = message["touchRate"];
+                    if (touchRateValue is int intValue)
+                        touchRate = intValue;
+                    else if (touchRateValue is long longValue)
+                        touchRate = (int)longValue;
+                    else
+                        touchRate = (int)Convert.ToDouble(touchRateValue);
                 }
+
+                Console.WriteLine($"  - Stream Quality: {quality}");
+                Console.WriteLine($"  - Low Latency Mode: {lowLatency}");
+                Console.WriteLine($"  - Very Low Latency Mode: {veryLowLatency}");
+                Console.WriteLine($"  - Target FPS: {targetFPS}");
+                Console.WriteLine($"  - JPEG Quality: {jpegQuality}");
+                Console.WriteLine($"  - Performance Mode: {perfMode}");
+                Console.WriteLine($"  - Touch Rate: {touchRate} Hz");
+                Console.WriteLine($"  - Active Area: {activeAreaWidth:F2} x {activeAreaHeight:F2}");
+
+                // Apply Screen Capture settings
+                int finalFPS = veryLowLatency ? Math.Max(120, targetFPS) : targetFPS;
+                _screenCapture.SetTargetFPS(finalFPS);
+                _screenCapture.SetQuality(jpegQuality);
+                var (w, h) = MapQualityToSize(quality);
+                _screenCapture.SetMaxDimensions(w, h);
+
+                // Apply tablet area and touch rate - CRITICAL FIX
+                _driver.SetTabletArea(0, 0, activeAreaWidth, activeAreaHeight);
+                _driver.SetTargetTouchRate(touchRate);
                 
-                Console.WriteLine("✅ Settings applied successfully");
+                Console.WriteLine($"✅ Settings applied: {touchRate}Hz @ {finalFPS}FPS with {quality}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Handle settings error: {ex.Message}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
             }
+        }
+
+        private (int width, int height) MapQualityToSize(string quality)
+        {
+            if (string.IsNullOrWhiteSpace(quality)) return (960, 540);
+            var q = quality.ToLowerInvariant();
+            if (q.Contains("very low")) return (854, 480);   // 480p
+            if (q.Contains("low")) return (1280, 720);       // 720p
+            if (q.Contains("medium")) return (1600, 900);    // 900p
+            if (q.Contains("high")) return (1920, 1080);     // 1080p
+            if (q.Contains("ultra")) return (2560, 1440);    // 1440p
+            return (960, 540);
         }
 
         private void HandleHeartbeat(Dictionary<string, object> message)

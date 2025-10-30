@@ -21,6 +21,10 @@ namespace OsuTabletDriver
         private int _quality = 75; // JPEG quality
         private readonly object _settingsLock = new object();
         
+        // New: dynamic max output size (default to 960x540)
+        private int _maxWidth = 960;
+        private int _maxHeight = 540;
+        
         public int CurrentFps => _currentFps;
 
         public void SetTargetFPS(int fps)
@@ -38,6 +42,16 @@ namespace OsuTabletDriver
             {
                 _quality = Math.Clamp(quality, 10, 100);
                 Console.WriteLine($"🎨 JPEG Quality set to: {_quality}");
+            }
+        }
+        
+        public void SetMaxDimensions(int width, int height)
+        {
+            lock (_settingsLock)
+            {
+                _maxWidth = Math.Clamp(width, 320, 3840);
+                _maxHeight = Math.Clamp(height, 240, 2160);
+                Console.WriteLine($"🖼️ Max stream size set to: {_maxWidth}x{_maxHeight}");
             }
         }
 
@@ -79,10 +93,14 @@ namespace OsuTabletDriver
                     
                     int currentTargetFps;
                     int currentQuality;
+                    int currentMaxWidth;
+                    int currentMaxHeight;
                     lock (_settingsLock)
                     {
                         currentTargetFps = _targetFps;
                         currentQuality = _quality;
+                        currentMaxWidth = _maxWidth;
+                        currentMaxHeight = _maxHeight;
                     }
                     
                     int frameDelay = 1000 / currentTargetFps;
@@ -93,8 +111,8 @@ namespace OsuTabletDriver
                         // Encode as JPEG
                         using (var ms = new MemoryStream())
                         {
-                            // Resize for better performance (optional)
-                            using (var resized = ResizeBitmap(bitmap, 1920, 1080))
+                            // Resize based on current settings
+                            using (var resized = ResizeBitmap(bitmap, currentMaxWidth, currentMaxHeight))
                             {
                                 var encoder = ImageCodecInfo.GetImageEncoders()[1]; // JPEG
                                 var encoderParams = new EncoderParameters(1);
