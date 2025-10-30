@@ -39,8 +39,8 @@ workflows:
           cd ios-app/OsuTablet
           
           # Build for device without code signing
-          set -o pipefail
-          xcodebuild clean build \
+          echo "Starting xcodebuild..."
+          if xcodebuild clean build \
             -project OsuTablet.xcodeproj \
             -scheme "$XCODE_SCHEME" \
             -configuration Release \
@@ -52,48 +52,73 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE="" \
-            | xcpretty
-          
-          echo "✓ Build completed"
+            | xcpretty; then
+            echo "✓ Build completed successfully"
+          else
+            echo "❌ Build failed!"
+            echo "Listing build directory contents:"
+            find build -name "*.app" -o -name "*.xcarchive" -o -name "*.log" | head -20
+            exit 1
+          fi
       
       - name: Create unsigned IPA package
         script: |
           set -euo pipefail
           cd ios-app/OsuTablet
 
-          # Prefer .app from our local DerivedData path
-          LOCAL_APP_PATH=$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 2 -name "*.app" -type d | head -1 || true)
+          echo "Searching for .app bundle..."
+          echo "Current directory: $(pwd)"
+          echo "Contents of build/DerivedData:"
+          ls -la build/DerivedData || echo "build/DerivedData not found"
+          
+          # Search all possible locations
+          echo "Searching for .app files:"
+          find build -name "*.app" -type d 2>/dev/null | head -10 || echo "No .app found in build directory"
+          
+          # Try local DerivedData first
+          LOCAL_APP_PATH=$(find build/DerivedData -name "*.app" -type d 2>/dev/null | head -1 || true)
 
           if [ -n "$LOCAL_APP_PATH" ] && [ -d "$LOCAL_APP_PATH" ]; then
             APP_PATH="$LOCAL_APP_PATH"
+            echo "Using local .app: $APP_PATH"
           else
-            # Fallback: determine from build settings (may point to global DerivedData)
+            echo "No local .app found, trying xcodebuild settings..."
+            # Get build settings
             APP_DIR=$(xcodebuild \
               -project OsuTablet.xcodeproj \
               -scheme "$XCODE_SCHEME" \
               -configuration Release \
               -sdk iphoneos \
-              -showBuildSettings | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1)
+              -showBuildSettings 2>/dev/null | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1 || true)
 
             WRAPPER_NAME=$(xcodebuild \
               -project OsuTablet.xcodeproj \
               -scheme "$XCODE_SCHEME" \
               -configuration Release \
               -sdk iphoneos \
-              -showBuildSettings | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1)
+              -showBuildSettings 2>/dev/null | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1 || true)
 
-            APP_PATH="${APP_DIR:+$APP_DIR/}${WRAPPER_NAME}"
+            if [ -n "$APP_DIR" ] && [ -n "$WRAPPER_NAME" ]; then
+              APP_PATH="$APP_DIR/$WRAPPER_NAME"
+              echo "Computed APP_PATH from build settings: $APP_PATH"
+            else
+              echo "❌ Could not determine APP_PATH from build settings"
+              APP_PATH=""
+            fi
           fi
 
-          echo "LOCAL_APP_PATH=$LOCAL_APP_PATH"
-          echo "Resolved APP_PATH=$APP_PATH"
+          echo "Final APP_PATH=$APP_PATH"
 
           if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
             echo "❌ Error: Could not find built .app directory"
-            echo "Listing candidates under build/DerivedData:"
-            find build/DerivedData -type d -name "*.app" | sed 's/^/Found: /' || true
+            echo "All .app candidates found:"
+            find / -name "OsuTablet.app" -type d 2>/dev/null | head -5 || echo "No OsuTablet.app found anywhere"
             exit 1
           fi
+
+          # Verify .app structure
+          echo "Verifying .app structure:"
+          ls -la "$APP_PATH" | head -5
 
           # Prepare Payload and create IPA
           rm -rf build/Payload
@@ -162,8 +187,8 @@ workflows:
         script: |
           set -euo pipefail
           cd ios-app/OsuTablet
-          set -o pipefail
-          xcodebuild clean build \
+          echo "Starting xcodebuild..."
+          if xcodebuild clean build \
             -project OsuTablet.xcodeproj \
             -scheme "$XCODE_SCHEME" \
             -configuration Release \
@@ -175,33 +200,32 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE="" \
-            | xcpretty
+            | xcpretty; then
+            echo "✓ Build completed successfully"
+          else
+            echo "❌ Build failed!"
+            find build -name "*.app" -o -name "*.log" | head -10
+            exit 1
+          fi
       - name: Create unsigned IPA package
         script: |
           set -euo pipefail
           cd ios-app/OsuTablet
 
-          LOCAL_APP_PATH=$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 2 -name "*.app" -type d | head -1 || true)
+          echo "Searching for .app bundle..."
+          find build -name "*.app" -type d 2>/dev/null | head -10 || echo "No .app found"
+          
+          LOCAL_APP_PATH=$(find build -name "*.app" -type d 2>/dev/null | head -1 || true)
           if [ -n "$LOCAL_APP_PATH" ] && [ -d "$LOCAL_APP_PATH" ]; then
             APP_PATH="$LOCAL_APP_PATH"
+            echo "Using: $APP_PATH"
           else
-            APP_DIR=$(xcodebuild \
-              -project OsuTablet.xcodeproj \
-              -scheme "$XCODE_SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -showBuildSettings | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1)
-            WRAPPER_NAME=$(xcodebuild \
-              -project OsuTablet.xcodeproj \
-              -scheme "$XCODE_SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -showBuildSettings | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1)
-            APP_PATH="${APP_DIR:+$APP_DIR/}${WRAPPER_NAME}"
+            echo "❌ No .app bundle found in build directory"
+            exit 1
           fi
 
-          echo "Resolved APP_PATH=$APP_PATH"
-          test -n "$APP_PATH" && [ -d "$APP_PATH" ]
+          # Verify .app structure
+          ls -la "$APP_PATH" | head -5
 
           rm -rf build/Payload
           mkdir -p build/Payload
