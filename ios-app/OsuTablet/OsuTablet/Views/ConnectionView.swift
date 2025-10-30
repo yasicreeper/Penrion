@@ -24,6 +24,23 @@ struct ConnectionView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
             
+            // Saved Devices Section
+            if !connectionManager.savedDevices.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Saved Devices")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 40)
+                    
+                    ForEach(connectionManager.savedDevices) { device in
+                        SavedDeviceRow(device: device) {
+                            connectToSavedDevice(device)
+                        }
+                    }
+                }
+                .padding(.top, 20)
+            }
+            
             if isScanning {
                 VStack(spacing: 20) {
                     ProgressView()
@@ -134,6 +151,74 @@ struct ConnectionView: View {
         
         connectionManager.connect(to: device)
         showManualEntry = false
+    }
+    
+    private func connectToSavedDevice(_ savedDevice: SavedDevice) {
+        let device = DiscoveredDevice(
+            id: savedDevice.id,
+            name: savedDevice.name,
+            ipAddress: savedDevice.ipAddress,
+            endpoint: nil
+        )
+        connectionManager.connect(to: device)
+    }
+}
+
+struct SavedDeviceRow: View {
+    let device: SavedDevice
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: "desktopcomputer")
+                    .font(.title2)
+                    .foregroundColor(.blue)
+                
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text(device.name)
+                            .foregroundColor(.white)
+                            .fontWeight(.semibold)
+                        
+                        Spacer()
+                        
+                        // Online status indicator
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(device.isOnline ? Color.green : Color.gray)
+                                .frame(width: 8, height: 8)
+                            Text(device.isOnline ? "Online" : "Offline")
+                                .font(.caption2)
+                                .foregroundColor(device.isOnline ? .green : .gray)
+                        }
+                    }
+                    
+                    Text(device.ipAddress)
+                        .foregroundColor(.gray)
+                        .font(.caption)
+                    
+                    Text("Last connected: \(formatDate(device.lastConnected))")
+                        .foregroundColor(.gray.opacity(0.7))
+                        .font(.caption2)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.gray)
+            }
+            .padding()
+            .background(Color.white.opacity(0.1))
+            .cornerRadius(15)
+        }
+        .padding(.horizontal, 40)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 

@@ -6,6 +6,7 @@ import UIKit
 class ConnectionManager: ObservableObject {
     @Published var isConnected = false
     @Published var discoveredDevices: [DiscoveredDevice] = []
+    @Published var savedDevices: [SavedDevice] = []
     @Published var currentFPS = 0
     @Published var connectionError: String?
     @Published var isReconnecting = false
@@ -20,6 +21,15 @@ class ConnectionManager: ObservableObject {
     private let maxReconnectAttempts = 5
     private var reconnectTimer: Timer?
     private var currentDevice: DiscoveredDevice?
+    private var heartbeatTimer: Timer?
+    private var onlineCheckTimer: Timer?
+    
+    private let savedDevicesKey = "savedDevices"
+    
+    init() {
+        loadSavedDevices()
+        startOnlineStatusChecks()
+    }
     
     func startDiscovery() {
         print("🔍 Starting network discovery")
@@ -83,6 +93,8 @@ class ConnectionManager: ObservableObject {
                     self?.reconnectAttempts = 0
                     self?.connectionError = nil
                     self?.startReceiving()
+                    self?.saveSuccessfulConnection(device)
+                    self?.startHeartbeat()
                     print("✅ Connected to \(device.name)")
                 case .failed(let error):
                     print("❌ Connection failed: \(error.localizedDescription)")
@@ -424,6 +436,96 @@ class ConnectionManager: ObservableObject {
         
         return address
     }
+    
+    // MARK: - Device Persistence
+    
+    private func loadSavedDevices() {
+        if let data = UserDefaults.standard.data(forKey: savedDevicesKey),
+           let devices = try? JSONDecoder().decode([SavedDevice].self, from: data) {
+            savedDevices = devices
+            print("📱 Loaded \(devices.count) saved devices")
+        }
+    }
+    
+    private func saveSuccessfulConnection(_ device: DiscoveredDevice) {
+        let savedDevice = SavedDevice(
+            id: device.id,
+            name: device.name,
+            ipAddress: device.ipAddress,
+            lastConnected: Date(),
+            isOnline: true
+        )
+        
+        // Update or add device
+        if let index = savedDevices.firstIndex(where: { $0.ipAddress == device.ipAddress }) {
+            savedDevices[index] = savedDevice
+        } else {
+            savedDevices.append(savedDevice)
+        }
+        
+        persistSavedDevices()
+        print("💾 Saved device: \(device.name) (\(device.ipAddress))")
+    }
+    
+    private func persistSavedDevices() {
+        if let data = try? JSONEncoder().encode(savedDevices) {
+            UserDefaults.standard.set(data, forKey: savedDevicesKey)
+        }
+    }
+    
+    // MARK: - Online Status Checking
+    
+    private func startOnlineStatusChecks() {
+        onlineCheckTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            self?.checkOnlineStatus()
+        }
+    }
+    
+    private func checkOnlineStatus() {
+        for (index, device) in savedDevices.enumerated() {
+            Task {
+                let isOnline = await testConnection(to: device.ipAddress)
+                DispatchQueue.main.async {
+                    self.savedDevices[index].isOnline = isOnline
+                }
+            }
+        }
+    }
+    
+    // MARK: - Heartbeat
+    
+    private func startHeartbeat() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            self?.sendHeartbeat()
+        }
+    }
+    
+    private func sendHeartbeat() {
+        guard let connection = connection else { return }
+        
+        let heartbeat: [String: Any] = [
+            "type": "heartbeat",
+            "timestamp": Date().timeIntervalSince1970
+        ]
+        
+        if let jsonData = try? JSONSerialization.data(withJSONObject: heartbeat) {
+            var message = jsonData
+            var length = UInt32(jsonData.count).bigEndian
+            let lengthData = Data(bytes: &length, count: 4)
+            message = lengthData + jsonData
+            
+            connection.send(content: message, completion: .contentProcessed({ _ in }))
+        }
+    }
+}
+
+struct SavedDevice: Codable, Identifiable, Equatable {
+    let id: String
+    let name: String
+    let ipAddress: String
+    var lastConnected: Date
+    var isOnline: Bool
 }
 
 struct DiscoveredDevice: Identifiable {
