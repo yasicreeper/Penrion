@@ -41,7 +41,7 @@ struct SettingsView: View {
                 // ===== OSU! MODE SECTION =====
                 Section(header: Text("OSU! Mode")) {
                     Picker("Window Size Preset", selection: $settingsManager.osuWindowSize) {
-                        ForEach([OsuWindowSize.tiny, .small, .medium, .large, .pro], id: \.self) { size in
+                        ForEach([OsuWindowSize.tiny, .small, .standard, .large, .pro], id: \.self) { size in
                             Text(size.displayName).tag(size)
                         }
                     }
