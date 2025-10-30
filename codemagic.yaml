@@ -119,3 +119,71 @@ workflows:
         notify:
           success: true
           failure: true
+
+  # ============================================
+  # Alias workflow for tools referencing "ios-workflow"
+  # Same as ios-unsigned-workflow, kept for compatibility
+  # ============================================
+  ios-workflow:
+    name: iOS Penrion (Unsigned alias for compatibility)
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      vars:
+        XCODE_PROJECT: "ios-app/OsuTablet/OsuTablet.xcodeproj"
+        XCODE_SCHEME: "OsuTablet"
+      xcode: 15.0
+    scripts:
+      - name: Set up build environment
+        script: |
+          echo "Building unsigned IPA for sideloading (ios-workflow alias)..."
+          echo "Project: $XCODE_PROJECT"
+          echo "Scheme: $XCODE_SCHEME"
+      - name: Configure project for unsigned build
+        script: |
+          cd ios-app/OsuTablet
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.penrion.osutablet" OsuTablet/Info.plist || true
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' OsuTablet.xcodeproj/project.pbxproj || true
+          sed -i '' 's/DEVELOPMENT_TEAM = .*;/DEVELOPMENT_TEAM = "";/g' OsuTablet.xcodeproj/project.pbxproj || true
+      - name: Build app for iOS device
+        script: |
+          cd ios-app/OsuTablet
+          xcodebuild clean build \
+            -project OsuTablet.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE="" \
+            | xcpretty || true
+      - name: Create unsigned IPA package
+        script: |
+          cd ios-app/OsuTablet
+          APP_PATH=$(find build/DerivedData -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ Error: Could not find built .app file"
+            exit 1
+          fi
+          mkdir -p build/Payload
+          cp -r "$APP_PATH" build/Payload/
+          cd build
+          zip -qr Penrion-OsuTablet-Unsigned.ipa Payload
+          mkdir -p ../../release/ios
+          mv Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+      - name: Verify IPA
+        script: |
+          test -f "release/ios/Penrion-OsuTablet-Unsigned.ipa" && echo "✅ Build successful!" || (echo "❌ IPA not found" && exit 1)
+    artifacts:
+      - release/ios/*.ipa
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
