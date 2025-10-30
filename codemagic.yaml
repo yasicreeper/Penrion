@@ -128,28 +128,30 @@ workflows:
             echo "❌ IPA not found in expected locations"
             exit 1
           fi
-
-    artifacts:
-      - release/ios/*.ipa
-      - ios-app/OsuTablet/build/*.ipa
-    
-    publishing:
-      # Email with IPA download link
-      email:
-        recipients:
-          - yasicree9@gmail.com
-        notify:
-          success: true    # Get email when build succeeds
-          failure: true    # Get email when build fails
       
-      # GitHub Releases - Automatic upload to GitHub
-      github_releases:
-        release_type: release
-        tag: v1.0.$CM_BUILD_NUMBER
-        name: iOS Build #$CM_BUILD_NUMBER
-        body: |
-          📱 Penrion OSU! Tablet - Unsigned IPA
+      - name: Upload to GitHub Releases
+        script: |
+          # Install GitHub CLI if not available
+          if ! command -v gh &> /dev/null; then
+            echo "Installing GitHub CLI..."
+            brew install gh
+          fi
           
+          # Set version tag
+          TAG_NAME="v1.0.${CM_BUILD_NUMBER}"
+          IPA_PATH="release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          
+          # Authenticate with GitHub
+          echo "$GITHUB_TOKEN" | gh auth login --with-token
+          
+          # Create release and upload IPA
+          echo "Creating GitHub Release: $TAG_NAME"
+          gh release create "$TAG_NAME" \
+            "$IPA_PATH" \
+            --repo yasicreeper/Penrion \
+            --title "iOS Build #${CM_BUILD_NUMBER}" \
+            --notes "📱 Penrion OSU! Tablet - Unsigned IPA
+
           ## Installation Instructions
           1. Download Penrion-OsuTablet-Unsigned.ipa
           2. Install using AltStore or Sideloadly
@@ -163,7 +165,23 @@ workflows:
           - Apple Pencil pressure support
           - Real-time screen mirroring
           
-          Build date: $CM_BUILD_DATE
+          Build date: $(date)" || echo "Release creation skipped (may already exist)"
+          
+          echo "✅ IPA uploaded to GitHub Releases!"
+          echo "Download from: https://github.com/yasicreeper/Penrion/releases/tag/$TAG_NAME"
+
+    artifacts:
+      - release/ios/*.ipa
+      - ios-app/OsuTablet/build/*.ipa
+    
+    publishing:
+      # Email with IPA download link
+      email:
+        recipients:
+          - yasicree9@gmail.com
+        notify:
+          success: true    # Get email when build succeeds
+          failure: true    # Get email when build fails
         
       # Uncomment below to enable Slack notifications (optional)
       # slack:
@@ -288,27 +306,30 @@ workflows:
             echo "❌ IPA not found"
             exit 1
           fi
-    artifacts:
-      - release/ios/*.ipa
-      - ios-app/OsuTablet/build/*.ipa
-    
-    publishing:
-      # Email with IPA download link
-      email:
-        recipients:
-          - yasicree9@gmail.com
-        notify:
-          success: true
-          failure: true
       
-      # GitHub Releases - Automatic upload to GitHub
-      github_releases:
-        release_type: release
-        tag: v1.0.$CM_BUILD_NUMBER
-        name: iOS Build #$CM_BUILD_NUMBER
-        body: |
-          📱 Penrion OSU! Tablet - Unsigned IPA
+      - name: Upload to GitHub Releases
+        script: |
+          # Install GitHub CLI if not available
+          if ! command -v gh &> /dev/null; then
+            echo "Installing GitHub CLI..."
+            brew install gh
+          fi
           
+          # Set version tag
+          TAG_NAME="v1.0.${CM_BUILD_NUMBER}"
+          IPA_PATH="release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          
+          # Authenticate with GitHub
+          echo "$GITHUB_TOKEN" | gh auth login --with-token
+          
+          # Create release and upload IPA
+          echo "Creating GitHub Release: $TAG_NAME"
+          gh release create "$TAG_NAME" \
+            "$IPA_PATH" \
+            --repo yasicreeper/Penrion \
+            --title "iOS Build #${CM_BUILD_NUMBER}" \
+            --notes "📱 Penrion OSU! Tablet - Unsigned IPA
+
           ## Installation Instructions
           1. Download Penrion-OsuTablet-Unsigned.ipa
           2. Install using AltStore or Sideloadly
@@ -322,7 +343,22 @@ workflows:
           - Apple Pencil pressure support
           - Real-time screen mirroring
           
-          Build date: $CM_BUILD_DATE
+          Build date: $(date)" || echo "Release creation skipped (may already exist)"
+          
+          echo "✅ IPA uploaded to GitHub Releases!"
+          echo "Download from: https://github.com/yasicreeper/Penrion/releases/tag/$TAG_NAME"
+    artifacts:
+      - release/ios/*.ipa
+      - ios-app/OsuTablet/build/*.ipa
+    
+    publishing:
+      # Email with IPA download link
+      email:
+        recipients:
+          - yasicree9@gmail.com
+        notify:
+          success: true
+          failure: true
       
       # Uncomment below to enable Slack notifications (optional)
       # slack:
