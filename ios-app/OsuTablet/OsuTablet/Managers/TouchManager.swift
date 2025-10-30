@@ -32,7 +32,7 @@ class TouchManager: ObservableObject {
         
         // Log significant events
         if phase == .began {
-            logDebug("Touch began: id=\(id), pressure=\(String(format: "%.2f", pressure))", category: "Touch")
+            print("👆 Touch began: id=\(id), pressure=\(String(format: "%.2f", pressure))")
         }
         
         // Send to PC

@@ -22,7 +22,7 @@ class ConnectionManager: ObservableObject {
     private var currentDevice: DiscoveredDevice?
     
     func startDiscovery() {
-        logInfo("Starting network discovery", category: "Network")
+        print("🔍 Starting network discovery")
         let parameters = NWParameters.tcp
         parameters.includePeerToPeer = true
         
@@ -83,16 +83,15 @@ class ConnectionManager: ObservableObject {
                     self?.reconnectAttempts = 0
                     self?.connectionError = nil
                     self?.startReceiving()
-                    logInfo("Connected to \(device.name)", category: "Network")
                     print("✅ Connected to \(device.name)")
                 case .failed(let error):
-                    logError("Connection failed: \(error.localizedDescription)", category: "Network")
+                    print("❌ Connection failed: \(error.localizedDescription)")
                     print("❌ Connection failed: \(error)")
                     self?.isConnected = false
                     self?.connectionError = "Failed: \(error.localizedDescription)"
                     self?.handleConnectionFailure()
                 case .cancelled:
-                    logInfo("Connection cancelled", category: "Network")
+                    print("🚫 Connection cancelled")
                     self?.isConnected = false
                     self?.isReconnecting = false
                 default:
