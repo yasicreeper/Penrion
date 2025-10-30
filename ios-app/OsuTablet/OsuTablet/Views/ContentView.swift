@@ -61,6 +61,15 @@ struct ContentView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
+        .onChange(of: connectionManager.isConnected) { oldValue, newValue in
+            if newValue {
+                // Send settings to Windows when connection established
+                print("📡 Connection established - sending settings")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    connectionManager.sendSettings(settingsManager)
+                }
+            }
+        }
     }
 }
 

@@ -173,6 +173,9 @@ namespace OsuTabletDriver
                     case "stream_request":
                         HandleStreamRequest(message);
                         break;
+                    case "settings":
+                        HandleSettingsMessage(message);
+                        break;
                 }
             }
             catch (Exception ex)
@@ -242,6 +245,59 @@ namespace OsuTabletDriver
         {
             // Start screen streaming
             _screenCapture.StartCapture(_stream!);
+        }
+
+        private void HandleSettingsMessage(Dictionary<string, object> message)
+        {
+            try
+            {
+                Console.WriteLine("⚙️ Received settings from iPad:");
+                
+                // Extract settings
+                if (message.ContainsKey("streamQuality"))
+                {
+                    string quality = message["streamQuality"].ToString()!;
+                    Console.WriteLine($"  - Stream Quality: {quality}");
+                }
+                
+                if (message.ContainsKey("lowLatencyMode"))
+                {
+                    bool lowLatency = Convert.ToBoolean(message["lowLatencyMode"]);
+                    Console.WriteLine($"  - Low Latency Mode: {lowLatency}");
+                }
+                
+                if (message.ContainsKey("veryLowLatencyMode"))
+                {
+                    bool veryLowLatency = Convert.ToBoolean(message["veryLowLatencyMode"]);
+                    Console.WriteLine($"  - Very Low Latency Mode: {veryLowLatency}");
+                }
+                
+                if (message.ContainsKey("targetFPS"))
+                {
+                    int targetFPS = Convert.ToInt32(message["targetFPS"]);
+                    Console.WriteLine($"  - Target FPS: {targetFPS}");
+                    _screenCapture.SetTargetFPS(targetFPS);
+                }
+                
+                if (message.ContainsKey("jpegQuality"))
+                {
+                    int jpegQuality = Convert.ToInt32(message["jpegQuality"]);
+                    Console.WriteLine($"  - JPEG Quality: {jpegQuality}");
+                    _screenCapture.SetQuality(jpegQuality);
+                }
+                
+                if (message.ContainsKey("performanceMode"))
+                {
+                    bool perfMode = Convert.ToBoolean(message["performanceMode"]);
+                    Console.WriteLine($"  - Performance Mode: {perfMode}");
+                }
+                
+                Console.WriteLine("✅ Settings applied successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Handle settings error: {ex.Message}");
+            }
         }
     }
 

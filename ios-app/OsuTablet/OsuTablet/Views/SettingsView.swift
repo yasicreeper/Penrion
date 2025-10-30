@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var connectionManager: ConnectionManager
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -160,6 +161,10 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
+                        // Send updated settings to Windows before closing
+                        if connectionManager.isConnected {
+                            connectionManager.sendSettings(settingsManager)
+                        }
                         dismiss()
                     }
                 }

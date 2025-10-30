@@ -184,6 +184,50 @@ class ConnectionManager: ObservableObject {
         }
     }
     
+    func sendSettings(_ settingsManager: SettingsManager) {
+        guard let connection = connection else { return }
+        
+        let settings: [String: Any] = [
+            "type": "settings",
+            "streamQuality": settingsManager.streamQuality.rawValue,
+            "lowLatencyMode": settingsManager.lowLatencyMode,
+            "veryLowLatencyMode": settingsManager.veryLowLatencyMode,
+            "targetFPS": settingsManager.veryLowLatencyMode ? 60 : 30,
+            "jpegQuality": getJPEGQuality(for: settingsManager.streamQuality),
+            "activeAreaWidth": settingsManager.activeAreaWidth,
+            "activeAreaHeight": settingsManager.activeAreaHeight,
+            "pressureSensitivity": settingsManager.pressureSensitivity,
+            "performanceMode": settingsManager.performanceMode
+        ]
+        
+        print("📤 Sending settings to Windows: \(settings)")
+        
+        if let jsonData = try? JSONSerialization.data(withJSONObject: settings) {
+            var message = jsonData
+            var length = UInt32(jsonData.count).bigEndian
+            let lengthData = Data(bytes: &length, count: 4)
+            message = lengthData + jsonData
+            
+            connection.send(content: message, completion: .contentProcessed({ error in
+                if let error = error {
+                    print("❌ Settings send error: \(error)")
+                } else {
+                    print("✅ Settings sent successfully")
+                }
+            }))
+        }
+    }
+    
+    private func getJPEGQuality(for quality: StreamQuality) -> Int {
+        switch quality {
+        case .veryLow: return 30
+        case .low: return 50
+        case .medium: return 75
+        case .high: return 85
+        case .ultra: return 95
+        }
+    }
+    
     func requestScreenStream() {
         guard let connection = connection else { return }
         

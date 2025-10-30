@@ -19,8 +19,27 @@ namespace OsuTabletDriver
         private int _currentFps = 0;
         private int _targetFps = 60;
         private int _quality = 75; // JPEG quality
+        private readonly object _settingsLock = new object();
         
         public int CurrentFps => _currentFps;
+
+        public void SetTargetFPS(int fps)
+        {
+            lock (_settingsLock)
+            {
+                _targetFps = Math.Clamp(fps, 15, 120);
+                Console.WriteLine($"📹 Target FPS set to: {_targetFps}");
+            }
+        }
+
+        public void SetQuality(int quality)
+        {
+            lock (_settingsLock)
+            {
+                _quality = Math.Clamp(quality, 10, 100);
+                Console.WriteLine($"🎨 JPEG Quality set to: {_quality}");
+            }
+        }
 
         // Win32 API for getting screen dimensions
         [DllImport("user32.dll")]
@@ -51,13 +70,22 @@ namespace OsuTabletDriver
         {
             int frameCount = 0;
             DateTime lastFpsUpdate = DateTime.Now;
-            int frameDelay = 1000 / _targetFps;
-
+            
             try
             {
                 while (!token.IsCancellationRequested && _isCapturing)
                 {
                     var frameStart = DateTime.Now;
+                    
+                    int currentTargetFps;
+                    int currentQuality;
+                    lock (_settingsLock)
+                    {
+                        currentTargetFps = _targetFps;
+                        currentQuality = _quality;
+                    }
+                    
+                    int frameDelay = 1000 / currentTargetFps;
 
                     // Capture screen
                     using (var bitmap = CaptureScreen())
@@ -72,7 +100,7 @@ namespace OsuTabletDriver
                                 var encoderParams = new EncoderParameters(1);
                                 encoderParams.Param[0] = new EncoderParameter(
                                     System.Drawing.Imaging.Encoder.Quality,
-                                    _quality
+                                    currentQuality
                                 );
                                 resized.Save(ms, encoder, encoderParams);
                             }
