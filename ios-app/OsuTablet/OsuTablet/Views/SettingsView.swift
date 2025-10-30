@@ -191,16 +191,21 @@ struct SettingsView: View {
                 Text("This will reset all settings to their default values. This action cannot be undone.")
             }
         }
-        
-        // Saving Indicator Overlay
-        VStack {
-            Spacer()
-            HStack {
-                Spacer()
-                SavingIndicator(isSaving: settingsManager.isSaving)
-                    .padding()
+                }
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            settingsManager.saveSettings()
+                            if connectionManager.isConnected {
+                                connectionManager.sendSettings(settingsManager)
+                            }
+                            dismiss()
+                        }
+                    }
+                }
             }
         }
     }
-        .toast(message: "Settings Saved!", type: .success, isShowing: $showSaveToast)
-    }
+}
