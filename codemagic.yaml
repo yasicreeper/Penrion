@@ -1,0 +1,102 @@
+workflows:
+  ios-workflow:
+    name: iOS Penrion OSU Tablet
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    integrations:
+      app_store_connect: codemagic
+    environment:
+      ios_signing:
+        distribution_type: ad_hoc
+        bundle_identifier: com.penrion.osutablet
+      vars:
+        XCODE_WORKSPACE: "ios-app/OsuTablet/OsuTablet.xcodeproj"
+        XCODE_SCHEME: "OsuTablet"
+        BUNDLE_ID: "com.penrion.osutablet"
+        APP_STORE_APPLE_ID: 1234567890
+      xcode: 15.0
+      cocoapods: default
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Get CocoaPods dependencies
+        script: |
+          cd ios-app/OsuTablet
+          pod install || echo "No Podfile found, skipping pod install"
+      - name: Increment build number
+        script: |
+          cd ios-app/OsuTablet
+          agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID") + 1))
+      - name: Build ipa for distribution
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
+
+  # Alternative workflow for unsigned IPA (for jailbroken/sideloading)
+  ios-unsigned-workflow:
+    name: iOS Penrion (Unsigned for Sideloading)
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      vars:
+        XCODE_PROJECT: "ios-app/OsuTablet/OsuTablet.xcodeproj"
+        XCODE_SCHEME: "OsuTablet"
+      xcode: 15.0
+      cocoapods: default
+    scripts:
+      - name: Install dependencies
+        script: |
+          cd ios-app/OsuTablet
+          pod install || echo "No Podfile found, skipping"
+      - name: Build unsigned archive
+        script: |
+          cd ios-app/OsuTablet
+          xcodebuild archive \
+            -project OsuTablet.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -archivePath build/OsuTablet.xcarchive \
+            -sdk iphoneos \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+      - name: Create IPA package
+        script: |
+          cd ios-app/OsuTablet
+          mkdir -p build/Payload
+          cp -r build/OsuTablet.xcarchive/Products/Applications/OsuTablet.app build/Payload/
+          cd build
+          zip -r Penrion-OsuTablet-Unsigned.ipa Payload
+          mkdir -p ../../release/ios
+          cp Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
+    artifacts:
+      - release/ios/*.ipa
+      - ios-app/OsuTablet/build/**/*.xcarchive
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
+      scripts:
+        - name: Upload to releases
+          script: |
+            echo "IPA built successfully!"
+            echo "Location: release/ios/Penrion-OsuTablet-Unsigned.ipa"
+            ls -lh release/ios/
