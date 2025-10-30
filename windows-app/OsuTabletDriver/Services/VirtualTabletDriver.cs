@@ -24,7 +24,10 @@ namespace OsuTabletDriver
 
         // Performance tracking
         private DateTime _lastTouchTime = DateTime.MinValue;
+        private DateTime _lastProcessedTouch = DateTime.MinValue;
         private int _touchCount = 0;
+        private int _targetTouchRate = 240; // Hz
+        private double _minTouchInterval = 1.0 / 240.0; // seconds
 
         // Windows API imports
         [DllImport("user32.dll")]
@@ -48,6 +51,16 @@ namespace OsuTabletDriver
 
         public bool IsInitialized => _isInitialized;
         public int TouchRate { get; private set; }
+
+        public void SetTargetTouchRate(int rateHz)
+        {
+            lock (_lock)
+            {
+                _targetTouchRate = Math.Clamp(rateHz, 60, 500);
+                _minTouchInterval = 1.0 / _targetTouchRate;
+                Console.WriteLine($"🎯 Target touch rate set to: {_targetTouchRate} Hz (min interval: {_minTouchInterval * 1000:F2}ms)");
+            }
+        }
 
         public void Initialize()
         {
@@ -85,6 +98,18 @@ namespace OsuTabletDriver
             {
                 try
                 {
+                    // Throttle based on target touch rate
+                    var now = DateTime.Now;
+                    var timeSinceLastTouch = (now - _lastProcessedTouch).TotalSeconds;
+                    
+                    if (timeSinceLastTouch < _minTouchInterval)
+                    {
+                        // Skip this touch to maintain target rate
+                        return;
+                    }
+                    
+                    _lastProcessedTouch = now;
+
                     // Map normalized coordinates to screen space
                     // Apply tablet area mapping
                     double mappedX = _tabletAreaX + (normalizedX * _tabletAreaWidth);

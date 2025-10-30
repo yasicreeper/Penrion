@@ -333,6 +333,13 @@ namespace OsuTabletDriver
                     Console.WriteLine($"  - Performance Mode: {perfMode}");
                 }
                 
+                if (message.ContainsKey("touchRate"))
+                {
+                    double touchRate = Convert.ToDouble(message["touchRate"]);
+                    Console.WriteLine($"  - Touch Rate: {touchRate} Hz");
+                    _driver.SetTargetTouchRate((int)touchRate);
+                }
+                
                 Console.WriteLine("✅ Settings applied successfully");
             }
             catch (Exception ex)

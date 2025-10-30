@@ -204,12 +204,13 @@ class ConnectionManager: ObservableObject {
             "streamQuality": settingsManager.streamQuality.rawValue,
             "lowLatencyMode": settingsManager.lowLatencyMode,
             "veryLowLatencyMode": settingsManager.veryLowLatencyMode,
-            "targetFPS": settingsManager.veryLowLatencyMode ? 60 : 30,
+            "targetFPS": settingsManager.veryLowLatencyMode ? 120 : 60,
             "jpegQuality": getJPEGQuality(for: settingsManager.streamQuality),
             "activeAreaWidth": settingsManager.activeAreaWidth,
             "activeAreaHeight": settingsManager.activeAreaHeight,
             "pressureSensitivity": settingsManager.pressureSensitivity,
-            "performanceMode": settingsManager.performanceMode
+            "performanceMode": settingsManager.performanceMode,
+            "touchRate": settingsManager.touchRate
         ]
         
         print("📤 Sending settings to Windows: \(settings)")

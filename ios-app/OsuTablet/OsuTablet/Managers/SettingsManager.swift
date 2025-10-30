@@ -20,12 +20,12 @@ class SettingsManager: ObservableObject {
     @Published var autoConnect: Bool = true { didSet { save("autoConnect", autoConnect) } }
     @Published var autoReconnect: Bool = true { didSet { save("autoReconnect", autoReconnect) } }
     
-    @Published var streamQuality: StreamQuality = .medium { didSet { save("streamQuality", streamQuality.rawValue) } }
+    @Published var streamQuality: StreamQuality = .veryLow { didSet { save("streamQuality", streamQuality.rawValue) } }
     @Published var lowLatencyMode: Bool = true { didSet { save("lowLatencyMode", lowLatencyMode) } }
     
-    @Published var performanceMode: Bool = false { didSet { save("performanceMode", performanceMode) } }
+    @Published var performanceMode: Bool = true { didSet { save("performanceMode", performanceMode) } }
     @Published var batterySaver: Bool = false { didSet { save("batterySaver", batterySaver) } }
-    @Published var touchRate: Double = 120.0 { didSet { save("touchRate", touchRate) } }
+    @Published var touchRate: Double = 240.0 { didSet { save("touchRate", touchRate) } }
     
     // Display features
     @Published var blackScreenMode: Bool = false { didSet { save("blackScreenMode", blackScreenMode) } }
@@ -34,7 +34,7 @@ class SettingsManager: ObservableObject {
     @Published var keepScreenOn: Bool = true { didSet { save("keepScreenOn", keepScreenOn) } }
     @Published var inactivityTimeout: Double = 300.0 { didSet { save("inactivityTimeout", inactivityTimeout) } }
     @Published var fullscreenMode: Bool = false { didSet { save("fullscreenMode", fullscreenMode) } }
-    @Published var veryLowLatencyMode: Bool = false { didSet { save("veryLowLatencyMode", veryLowLatencyMode) } }
+    @Published var veryLowLatencyMode: Bool = true { didSet { save("veryLowLatencyMode", veryLowLatencyMode) } }
     
     // OSU! Mode Presets
     @Published var osuWindowSize: OsuWindowSize = .standard { didSet { save("osuWindowSize", osuWindowSize.rawValue) } }
@@ -79,12 +79,14 @@ class SettingsManager: ObservableObject {
         if let qualityRaw = defaults.string(forKey: "streamQuality"),
            let quality = StreamQuality(rawValue: qualityRaw) {
             streamQuality = quality
+        } else {
+            streamQuality = .veryLow
         }
         lowLatencyMode = defaults.bool(forKey: "lowLatencyMode", defaultValue: true)
         
-        performanceMode = defaults.bool(forKey: "performanceMode")
+        performanceMode = defaults.bool(forKey: "performanceMode", defaultValue: true)
         batterySaver = defaults.bool(forKey: "batterySaver")
-        touchRate = defaults.double(forKey: "touchRate", defaultValue: 120.0)
+        touchRate = defaults.double(forKey: "touchRate", defaultValue: 240.0)
         
         // New features
         blackScreenMode = defaults.bool(forKey: "blackScreenMode")
@@ -93,7 +95,7 @@ class SettingsManager: ObservableObject {
         keepScreenOn = defaults.bool(forKey: "keepScreenOn", defaultValue: true)
         inactivityTimeout = defaults.double(forKey: "inactivityTimeout", defaultValue: 300.0)
         fullscreenMode = defaults.bool(forKey: "fullscreenMode")
-        veryLowLatencyMode = defaults.bool(forKey: "veryLowLatencyMode")
+        veryLowLatencyMode = defaults.bool(forKey: "veryLowLatencyMode", defaultValue: true)
         
         if let sizeRaw = defaults.string(forKey: "osuWindowSize"),
            let size = OsuWindowSize(rawValue: sizeRaw) {
