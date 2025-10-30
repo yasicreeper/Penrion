@@ -158,7 +158,7 @@ struct SettingsView: View {
                     
                     Link("GitHub Repository", destination: URL(string: "https://github.com/yasicreeper/Penrion")!)
                 }
-            }
+                }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
