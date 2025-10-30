@@ -144,12 +144,12 @@ namespace OsuTabletDriver
 
                     // Update touch rate
                     _touchCount++;
-                    var now = DateTime.Now;
-                    if ((now - _lastTouchTime).TotalSeconds >= 1.0)
+                    var currentTime = DateTime.Now;
+                    if ((currentTime - _lastTouchTime).TotalSeconds >= 1.0)
                     {
                         TouchRate = _touchCount;
                         _touchCount = 0;
-                        _lastTouchTime = now;
+                        _lastTouchTime = currentTime;
                     }
                 }
                 catch (Exception ex)
