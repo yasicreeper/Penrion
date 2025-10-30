@@ -159,9 +159,9 @@ struct SettingsView: View {
                     Link("GitHub Repository", destination: URL(string: "https://github.com/yasicreeper/Penrion")!)
                 }
                 }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(role: .destructive, action: { showResetConfirm = true }) {
                         Label("Reset", systemImage: "arrow.counterclockwise")
@@ -189,6 +189,7 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) { }
             } message: {
                 Text("This will reset all settings to their default values. This action cannot be undone.")
+            }
             }
         }
     }
