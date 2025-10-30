@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Windows;
 
 namespace OsuTabletDriver
@@ -9,27 +10,89 @@ namespace OsuTabletDriver
         private VirtualTabletDriver? _driver;
         private ScreenCaptureService? _screenCapture;
 
+        public App()
+        {
+            // Set up global exception handlers
+            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+            DispatcherUnhandledException += OnDispatcherUnhandledException;
+        }
+
+        private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            LogException(e.ExceptionObject as Exception);
+        }
+
+        private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            LogException(e.Exception);
+            e.Handled = true;
+        }
+
+        private void LogException(Exception? ex)
+        {
+            if (ex == null) return;
+
+            try
+            {
+                var logPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "OsuTabletDriver_Error.log"
+                );
+
+                var logMessage = $"[{DateTime.Now}] Exception:\n{ex.Message}\n\nStack Trace:\n{ex.StackTrace}\n\n";
+                File.AppendAllText(logPath, logMessage);
+
+                MessageBox.Show(
+                    $"An error occurred:\n\n{ex.Message}\n\n" +
+                    $"Error details saved to:\n{logPath}\n\n" +
+                    "Please check if you're running as Administrator.",
+                    "Application Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            }
+            catch
+            {
+                // If logging fails, just show the error
+                MessageBox.Show(
+                    $"Critical Error:\n\n{ex.Message}",
+                    "Application Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            }
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
-            // Check if running as administrator
-            if (!IsRunAsAdministrator())
+            try
             {
-                var result = MessageBox.Show(
-                    "This application requires Administrator privileges to create a virtual tablet driver.\n\n" +
-                    "Please right-click the executable and select 'Run as administrator'.\n\n" +
-                    "Continue anyway? (Limited functionality)",
-                    "Administrator Rights Required",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning
-                );
-
-                if (result == MessageBoxResult.No)
+                // Check if running as administrator
+                if (!IsRunAsAdministrator())
                 {
-                    Shutdown();
-                    return;
+                    var result = MessageBox.Show(
+                        "This application requires Administrator privileges to create a virtual tablet driver.\n\n" +
+                        "Please right-click the executable and select 'Run as administrator'.\n\n" +
+                        "Continue anyway? (Limited functionality)",
+                        "Administrator Rights Required",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning
+                    );
+
+                    if (result == MessageBoxResult.No)
+                    {
+                        Shutdown();
+                        return;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                LogException(ex);
+                Shutdown();
+                return;
             }
 
             try
