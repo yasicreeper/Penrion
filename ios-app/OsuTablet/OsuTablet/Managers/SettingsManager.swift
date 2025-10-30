@@ -25,7 +25,7 @@ class SettingsManager: ObservableObject {
     
     @Published var performanceMode: Bool = true { didSet { save("performanceMode", performanceMode) } }
     @Published var batterySaver: Bool = false { didSet { save("batterySaver", batterySaver) } }
-    @Published var touchRate: Double = 240.0 { didSet { save("touchRate", touchRate) } }
+    @Published var touchRate: Double = 500.0 { didSet { save("touchRate", touchRate) } }
     
     // Display features
     @Published var blackScreenMode: Bool = false { didSet { save("blackScreenMode", blackScreenMode) } }
@@ -86,7 +86,7 @@ class SettingsManager: ObservableObject {
         
         performanceMode = defaults.bool(forKey: "performanceMode", defaultValue: true)
         batterySaver = defaults.bool(forKey: "batterySaver")
-        touchRate = defaults.double(forKey: "touchRate", defaultValue: 240.0)
+        touchRate = defaults.double(forKey: "touchRate", defaultValue: 500.0)
         
         // New features
         blackScreenMode = defaults.bool(forKey: "blackScreenMode")
@@ -185,11 +185,12 @@ class SettingsManager: ObservableObject {
         port = 9876
         autoConnect = true
         autoReconnect = true
-        streamQuality = .medium
+        streamQuality = .veryLow
         lowLatencyMode = true
-        performanceMode = false
+        performanceMode = true
         batterySaver = false
-        touchRate = 120.0
+        touchRate = 500.0
+        veryLowLatencyMode = true
     }
     
     func applyPressureCurve(to pressure: Double) -> Double {

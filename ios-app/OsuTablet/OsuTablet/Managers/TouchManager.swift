@@ -27,21 +27,23 @@ class TouchManager: ObservableObject {
     func handleTouch(id: String, location: CGPoint, pressure: Double, phase: TouchPhase) {
         let startTime = Date()
         
-        // Update pressure with smoothing
+        // Update pressure with intelligent smoothing (reduced buffer for responsiveness)
         updatePressure(pressure)
         
-        // Log significant events
-        if phase == .began {
-            print("👆 Touch began: id=\(id), pressure=\(String(format: "%.2f", pressure))")
+        // Log significant events only (began/ended for cleaner logs)
+        if phase == .began || phase == .ended {
+            print("👆 Touch \(phase.rawValue): id=\(id), pressure=\(String(format: "%.3f", pressure))")
         }
         
-        // Send to PC
+        // Send to PC with high-resolution timestamp for latency measurement
+        let timestamp = Date().timeIntervalSince1970
         connectionManager?.sendTouchData(
             id: id,
             x: Double(location.x),
             y: Double(location.y),
             pressure: currentPressure,
-            phase: phase
+            phase: phase,
+            timestamp: timestamp
         )
         
         // Update metrics
@@ -53,13 +55,25 @@ class TouchManager: ObservableObject {
     }
     
     private func updatePressure(_ newPressure: Double) {
+        // Reduced buffer size for ultra-low latency (5 instead of 10)
         pressureBuffer.append(newPressure)
-        if pressureBuffer.count > maxPressureBufferSize {
+        if pressureBuffer.count > 5 {
             pressureBuffer.removeFirst()
         }
         
-        // Moving average for smooth pressure
-        currentPressure = pressureBuffer.reduce(0, +) / Double(pressureBuffer.count)
+        // Weighted moving average favoring recent values for better responsiveness
+        if pressureBuffer.count > 0 {
+            var weightedSum = 0.0
+            var weightSum = 0.0
+            for (index, value) in pressureBuffer.enumerated() {
+                let weight = Double(index + 1) // More weight to recent samples
+                weightedSum += value * weight
+                weightSum += weight
+            }
+            currentPressure = weightedSum / weightSum
+        } else {
+            currentPressure = newPressure
+        }
     }
     
     private func startMetricsTimer() {

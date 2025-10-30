@@ -26,9 +26,43 @@ class ConnectionManager: ObservableObject {
     
     private let savedDevicesKey = "savedDevices"
     
+    // New: Settings attachment and observation
+    private var settingsCancellables = Set<AnyCancellable>()
+    private var attachedSettingsManager: SettingsManager?
+    
     init() {
         loadSavedDevices()
         startOnlineStatusChecks()
+    }
+    
+    // MARK: - Settings wiring
+    func attach(settingsManager: SettingsManager) {
+        attachedSettingsManager = settingsManager
+        subscribeToSettingsChanges(settingsManager)
+    }
+    
+    private func subscribeToSettingsChanges(_ sm: SettingsManager) {
+        settingsCancellables.removeAll()
+        
+        // Any important setting change should push settings to Windows when connected
+        let publishers: [AnyPublisher<Void, Never>] = [
+            sm.$streamQuality.map { _ in () }.eraseToAnyPublisher(),
+            sm.$lowLatencyMode.map { _ in () }.eraseToAnyPublisher(),
+            sm.$veryLowLatencyMode.map { _ in () }.eraseToAnyPublisher(),
+            sm.$touchRate.map { _ in () }.eraseToAnyPublisher(),
+            sm.$activeAreaWidth.map { _ in () }.eraseToAnyPublisher(),
+            sm.$activeAreaHeight.map { _ in () }.eraseToAnyPublisher(),
+            sm.$pressureSensitivity.map { _ in () }.eraseToAnyPublisher(),
+            sm.$performanceMode.map { _ in () }.eraseToAnyPublisher()
+        ]
+        
+        Publishers.MergeMany(publishers)
+            .debounce(for: .milliseconds(120), scheduler: RunLoop.main)
+            .sink { [weak self] in
+                guard let self = self, let sm = self.attachedSettingsManager, self.isConnected else { return }
+                self.sendSettings(sm)
+            }
+            .store(in: &settingsCancellables)
     }
     
     func startDiscovery() {
@@ -95,6 +129,10 @@ class ConnectionManager: ObservableObject {
                     self?.startReceiving()
                     self?.saveSuccessfulConnection(device)
                     self?.startHeartbeat()
+                    // Send settings immediately on connect
+                    if let sm = self?.attachedSettingsManager {
+                        self?.sendSettings(sm)
+                    }
                     print("✅ Connected to \(device.name)")
                 case .failed(let error):
                     print("❌ Connection failed: \(error.localizedDescription)")
@@ -147,7 +185,7 @@ class ConnectionManager: ObservableObject {
         print("🔌 Disconnected")
     }
     
-    func sendTouchData(id: String, x: Double, y: Double, pressure: Double, phase: TouchPhase) {
+    func sendTouchData(id: String, x: Double, y: Double, pressure: Double, phase: TouchPhase, timestamp: Double? = nil) {
         guard let connection = connection else { return }
         
         let touchData: [String: Any] = [
@@ -157,7 +195,7 @@ class ConnectionManager: ObservableObject {
             "y": y,
             "pressure": pressure,
             "phase": phase.rawValue,
-            "timestamp": Date().timeIntervalSince1970
+            "timestamp": timestamp ?? Date().timeIntervalSince1970
         ]
         
         if let jsonData = try? JSONSerialization.data(withJSONObject: touchData) {
@@ -196,24 +234,40 @@ class ConnectionManager: ObservableObject {
         }
     }
     
+    // Convenience for attached settings
+    func sendCurrentSettings() {
+        if let sm = attachedSettingsManager { sendSettings(sm) }
+    }
+    
     func sendSettings(_ settingsManager: SettingsManager) {
-        guard let connection = connection else { return }
+        guard let connection = connection else {
+            print("❌ Cannot send settings: Not connected")
+            return
+        }
+        
+        // Calculate FPS based on performance mode with intelligent scaling
+        let targetFPS = settingsManager.veryLowLatencyMode ? 144 : (settingsManager.performanceMode ? 120 : 90)
         
         let settings: [String: Any] = [
             "type": "settings",
             "streamQuality": settingsManager.streamQuality.rawValue,
             "lowLatencyMode": settingsManager.lowLatencyMode,
             "veryLowLatencyMode": settingsManager.veryLowLatencyMode,
-            "targetFPS": settingsManager.veryLowLatencyMode ? 120 : 60,
+            "targetFPS": targetFPS,
             "jpegQuality": getJPEGQuality(for: settingsManager.streamQuality),
             "activeAreaWidth": settingsManager.activeAreaWidth,
             "activeAreaHeight": settingsManager.activeAreaHeight,
             "pressureSensitivity": settingsManager.pressureSensitivity,
             "performanceMode": settingsManager.performanceMode,
-            "touchRate": settingsManager.touchRate
+            "touchRate": Int(settingsManager.touchRate)
         ]
         
-        print("📤 Sending settings to Windows: \(settings)")
+        print("📤 Sending settings to Windows:")
+        print("  - Touch Rate: \(Int(settingsManager.touchRate)) Hz")
+        print("  - Target FPS: \(targetFPS)")
+        print("  - Stream Quality: \(settingsManager.streamQuality.rawValue)")
+        print("  - Very Low Latency: \(settingsManager.veryLowLatencyMode)")
+        print("  - Performance Mode: \(settingsManager.performanceMode)")
         
         if let jsonData = try? JSONSerialization.data(withJSONObject: settings) {
             var message = jsonData

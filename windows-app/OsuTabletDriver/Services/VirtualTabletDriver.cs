@@ -26,8 +26,12 @@ namespace OsuTabletDriver
         private DateTime _lastTouchTime = DateTime.MinValue;
         private DateTime _lastProcessedTouch = DateTime.MinValue;
         private int _touchCount = 0;
-        private int _targetTouchRate = 240; // Hz
-        private double _minTouchInterval = 1.0 / 240.0; // seconds
+        private int _targetTouchRate = 500; // Hz - increased for ultra-low latency
+        private double _minTouchInterval = 1.0 / 500.0; // seconds
+        
+        // Click state tracking
+        private bool _isPressed = false;
+        private double _lastPressure = 0;
 
         // Windows API imports
         [DllImport("user32.dll")]
@@ -98,17 +102,21 @@ namespace OsuTabletDriver
             {
                 try
                 {
-                    // Throttle based on target touch rate
+                    // Intelligent throttling based on target touch rate
                     var now = DateTime.Now;
                     var timeSinceLastTouch = (now - _lastProcessedTouch).TotalSeconds;
                     
-                    if (timeSinceLastTouch < _minTouchInterval)
+                    // Only throttle movement, never throttle pressure changes
+                    bool pressureChanged = Math.Abs(pressure - _lastPressure) > 0.05;
+                    
+                    if (timeSinceLastTouch < _minTouchInterval && !pressureChanged)
                     {
                         // Skip this touch to maintain target rate
                         return;
                     }
                     
                     _lastProcessedTouch = now;
+                    _lastPressure = pressure;
 
                     // Map normalized coordinates to screen space
                     // Apply tablet area mapping
@@ -127,9 +135,7 @@ namespace OsuTabletDriver
                     int mouseX = (int)((screenX * 65535.0) / _screenWidth);
                     int mouseY = (int)((screenY * 65535.0) / _screenHeight);
 
-                    // Send absolute mouse move ONLY (no clicking)
-                    // OSU! mode: Let the iPad's physical taps handle clicking through iOS
-                    // This prevents lag from simulated clicks
+                    // Send absolute mouse move
                     mouse_event(
                         MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK,
                         mouseX,
@@ -138,9 +144,33 @@ namespace OsuTabletDriver
                         UIntPtr.Zero
                     );
 
-                    // NOTE: No automatic clicking! The iPad detects taps natively.
-                    // For OSU!, the game reads the absolute cursor position and
-                    // the user taps the iPad screen directly (not sent over network)
+                    // Handle clicking based on pressure (optimized for OSU!)
+                    bool shouldBePressed = pressure > 0.1; // Low threshold for responsive tapping
+                    
+                    if (shouldBePressed && !_isPressed)
+                    {
+                        // Mouse down
+                        mouse_event(
+                            MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_VIRTUALDESK,
+                            mouseX,
+                            mouseY,
+                            0,
+                            UIntPtr.Zero
+                        );
+                        _isPressed = true;
+                    }
+                    else if (!shouldBePressed && _isPressed)
+                    {
+                        // Mouse up
+                        mouse_event(
+                            MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTUP | MOUSEEVENTF_VIRTUALDESK,
+                            mouseX,
+                            mouseY,
+                            0,
+                            UIntPtr.Zero
+                        );
+                        _isPressed = false;
+                    }
 
                     // Update touch rate
                     _touchCount++;

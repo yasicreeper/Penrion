@@ -14,6 +14,16 @@ struct OsuTabletApp: App {
                 .environmentObject(settingsManager)
                 .statusBar(hidden: true)
                 .persistentSystemOverlays(.hidden)
+                .onAppear {
+                    // Wire settings -> connection
+                    connectionManager.attach(settingsManager: settingsManager)
+                    // If connected, push current settings
+                    if connectionManager.isConnected {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            connectionManager.sendSettings(settingsManager)
+                        }
+                    }
+                }
         }
     }
 }

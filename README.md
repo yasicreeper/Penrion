@@ -1,30 +1,36 @@
 # 🎮 Penrion - iPad OSU! Tablet Driver
 
-Transform your iPad into a professional OSU! drawing tablet with real-time PC screen mirroring.
+Transform your iPad into a **professional-grade OSU! tablet** with real-time PC screen mirroring and **ultra-low latency** touch input.
 
 ## 🌟 Features
 
-- **Ultra-Low Latency Touch Input** - Professional-grade tablet performance optimized for OSU!
-- **Real-Time Screen Mirroring** - See your PC screen on your iPad while playing
-- **Pressure Sensitivity** - Full Apple Pencil pressure support (8192 levels)
-- **Customizable Active Area** - Match your preferred tablet size and ratio
-- **OSU! Mode** - Dedicated interface optimized for rhythm gaming
-- **Virtual Tablet Driver** - Acts as a native Windows tablet device
-- **Auto-Detection** - Automatically detects OSU! and applies optimal settings
+- **🚀 Ultra-Low Latency Touch Input** - <5ms latency with 500Hz polling rate for professional OSU! gameplay
+- **📺 Real-Time Screen Mirroring** - See your PC screen on iPad with up to 144 FPS
+- **✍️ Pressure Sensitivity** - Full Apple Pencil support (8192 pressure levels)
+- **🎯 Customizable Active Area** - Match your preferred tablet size and ratio precisely
+- **🎨 OSU! Mode** - Dedicated interface optimized for rhythm gaming
+- **💻 Virtual Tablet Driver** - Acts as a native Windows tablet device with absolute positioning
+- **🔍 Auto-Detection** - Automatically discovers PCs and applies optimal settings
+- **🎛️ Intelligent Click Detection** - Automatic click/release based on pressure threshold
+- **📊 Real-Time Stats** - Monitor latency, touch rate, FPS, and connection quality
+- **💾 Connection History** - Automatically saves and reconnects to known devices
+- **⚡ Performance Modes** - Multiple quality presets from 144p to 1440p
+- **🔄 Auto-Reconnect** - Seamlessly reconnects if connection drops
 
 ## 📱 Requirements
 
 ### iPad (iOS App)
 - iOS 17.0 or higher
-- iPad Air 3rd gen or newer recommended
+- iPad Air 3rd gen or newer (iPad Pro recommended for best performance)
 - Apple Pencil (optional, for pressure sensitivity)
-- WiFi connection (5GHz recommended for best performance)
+- WiFi connection (5GHz WiFi 6 recommended for <2ms network latency)
 
 ### Windows PC (Companion App)
 - Windows 10 version 1809 or higher
 - .NET 8.0 Runtime
-- WiFi adapter or Ethernet connection
-- 4GB RAM minimum
+- WiFi adapter or Gigabit Ethernet
+- 4GB RAM minimum (8GB recommended)
+- Administrator privileges for driver installation
 
 ## 🚀 Quick Start
 
@@ -39,7 +45,7 @@ Transform your iPad into a professional OSU! drawing tablet with real-time PC sc
 3. Grant administrator privileges for driver installation
 
 ### 3. Connect Devices
-1. Ensure both devices are on the same WiFi network
+1. Ensure both devices are on the same network (5GHz WiFi recommended)
 2. Launch the Windows app first
 3. Open the iOS app - it will auto-discover the PC
 4. Tap "Connect" when your PC appears
@@ -48,30 +54,38 @@ Transform your iPad into a professional OSU! drawing tablet with real-time PC sc
 1. Switch to "OSU! Mode" in the iOS app
 2. Launch OSU! on your PC
 3. The screen will automatically mirror to your iPad
-4. Start tapping!
+4. Configure active area and sensitivity in Settings
+5. Start tapping with ultra-low latency!
 
 ## 🎨 Usage Modes
 
 ### OSU! Mode
 Optimized for rhythm gaming with:
 - Minimal UI for maximum play area
-- Touch visualization
-- Latency monitor
-- Quick calibration access
+- Real-time touch visualization
+- <5ms total latency monitoring
+- 500Hz touch polling rate
+- Pressure-sensitive clicking
+- Quick settings access
 
 ### Windows Screen Mode
 Full PC control with:
-- Complete screen mirroring
-- Mouse emulation
-- Keyboard shortcuts
-- Multi-monitor support (planned)
+- Complete screen mirroring (up to 144 FPS)
+- Mouse emulation with absolute positioning
+- Touch-to-click functionality
+- Dynamic quality adjustment
+- Multi-monitor support (coming soon)
 
 ## ⚙️ Configuration
 
 ### iOS App Settings
-- **Active Area**: Define your tablet region
-- **Pressure Curve**: Customize pressure response
-- **Touch Feedback**: Visual and haptic options
+- **Active Area**: Define your tablet region (0.0-1.0 normalized coordinates)
+- **Pressure Curve**: Customize pressure response (Linear, Ease-In, Ease-Out, S-Curve)
+- **Touch Feedback**: Visual, haptic, and sound options
+- **Stream Quality**: Very Low (480p) to Ultra (1440p)
+- **Performance Mode**: 90 FPS streaming
+- **Very Low Latency Mode**: 144 FPS streaming with optimized encoding
+- **Touch Rate**: Adjustable from 60Hz to 500Hz
 - **Network Settings**: Port and discovery options
 
 ### Windows App Settings
