@@ -35,9 +35,11 @@ workflows:
           
       - name: Build app for iOS device
         script: |
+          set -euo pipefail
           cd ios-app/OsuTablet
           
           # Build for device without code signing
+          set -o pipefail
           xcodebuild clean build \
             -project OsuTablet.xcodeproj \
             -scheme "$XCODE_SCHEME" \
@@ -50,44 +52,46 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE="" \
-            | xcpretty || true
+            | xcpretty
           
           echo "✓ Build completed"
       
       - name: Create unsigned IPA package
         script: |
-          set -e
+          set -euo pipefail
           cd ios-app/OsuTablet
 
-          # Try to determine .app path from build settings
-          APP_DIR=$(xcodebuild \
-            -project OsuTablet.xcodeproj \
-            -scheme "$XCODE_SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -showBuildSettings | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1)
+          # Prefer .app from our local DerivedData path
+          LOCAL_APP_PATH=$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 2 -name "*.app" -type d | head -1 || true)
 
-          WRAPPER_NAME=$(xcodebuild \
-            -project OsuTablet.xcodeproj \
-            -scheme "$XCODE_SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -showBuildSettings | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1)
-
-          if [ -n "$APP_DIR" ] && [ -n "$WRAPPER_NAME" ]; then
-            APP_PATH="$APP_DIR/$WRAPPER_NAME"
+          if [ -n "$LOCAL_APP_PATH" ] && [ -d "$LOCAL_APP_PATH" ]; then
+            APP_PATH="$LOCAL_APP_PATH"
           else
-            # Fallback to find if showBuildSettings didn't return values
-            APP_PATH=$(find build/DerivedData -path "*Release-iphoneos/*.app" -type d | head -1)
+            # Fallback: determine from build settings (may point to global DerivedData)
+            APP_DIR=$(xcodebuild \
+              -project OsuTablet.xcodeproj \
+              -scheme "$XCODE_SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -showBuildSettings | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1)
+
+            WRAPPER_NAME=$(xcodebuild \
+              -project OsuTablet.xcodeproj \
+              -scheme "$XCODE_SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -showBuildSettings | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1)
+
+            APP_PATH="${APP_DIR:+$APP_DIR/}${WRAPPER_NAME}"
           fi
 
-          echo "APP_DIR=$APP_DIR"
-          echo "WRAPPER_NAME=$WRAPPER_NAME"
+          echo "LOCAL_APP_PATH=$LOCAL_APP_PATH"
           echo "Resolved APP_PATH=$APP_PATH"
 
           if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
             echo "❌ Error: Could not find built .app directory"
-            find build -maxdepth 4 -type d -name "*.app" | sed 's/^/Found candidate: /' || true
+            echo "Listing candidates under build/DerivedData:"
+            find build/DerivedData -type d -name "*.app" | sed 's/^/Found: /' || true
             exit 1
           fi
 
@@ -107,20 +111,17 @@ workflows:
 
       - name: Verify IPA
         script: |
+          set -euo pipefail
           echo "PWD=$(pwd)"
           ls -la
           echo "Listing release directory:" 
           ls -la release || true
           echo "Listing release/ios directory:" 
           ls -la release/ios || true
-          if [ -f "release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
-            echo "✅ Build successful!"
-            ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
-          else
-            echo "❌ IPA not found"
-            exit 1
-          fi
-    
+          test -f "release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          echo "✅ Build successful!"
+          ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
+
     artifacts:
       - release/ios/*.ipa
     
@@ -159,7 +160,9 @@ workflows:
           sed -i '' 's/DEVELOPMENT_TEAM = .*;/DEVELOPMENT_TEAM = "";/g' OsuTablet.xcodeproj/project.pbxproj || true
       - name: Build app for iOS device
         script: |
+          set -euo pipefail
           cd ios-app/OsuTablet
+          set -o pipefail
           xcodebuild clean build \
             -project OsuTablet.xcodeproj \
             -scheme "$XCODE_SCHEME" \
@@ -172,37 +175,33 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE="" \
-            | xcpretty || true
+            | xcpretty
       - name: Create unsigned IPA package
         script: |
-          set -e
+          set -euo pipefail
           cd ios-app/OsuTablet
 
-          APP_DIR=$(xcodebuild \
-            -project OsuTablet.xcodeproj \
-            -scheme "$XCODE_SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -showBuildSettings | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1)
-
-          WRAPPER_NAME=$(xcodebuild \
-            -project OsuTablet.xcodeproj \
-            -scheme "$XCODE_SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -showBuildSettings | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1)
-
-          if [ -n "$APP_DIR" ] && [ -n "$WRAPPER_NAME" ]; then
-            APP_PATH="$APP_DIR/$WRAPPER_NAME"
+          LOCAL_APP_PATH=$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 2 -name "*.app" -type d | head -1 || true)
+          if [ -n "$LOCAL_APP_PATH" ] && [ -d "$LOCAL_APP_PATH" ]; then
+            APP_PATH="$LOCAL_APP_PATH"
           else
-            APP_PATH=$(find build/DerivedData -path "*Release-iphoneos/*.app" -type d | head -1)
+            APP_DIR=$(xcodebuild \
+              -project OsuTablet.xcodeproj \
+              -scheme "$XCODE_SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -showBuildSettings | awk -F" = " '/TARGET_BUILD_DIR/ {print $2}' | tail -1)
+            WRAPPER_NAME=$(xcodebuild \
+              -project OsuTablet.xcodeproj \
+              -scheme "$XCODE_SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -showBuildSettings | awk -F" = " '/WRAPPER_NAME/ {print $2}' | tail -1)
+            APP_PATH="${APP_DIR:+$APP_DIR/}${WRAPPER_NAME}"
           fi
 
           echo "Resolved APP_PATH=$APP_PATH"
-          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-            echo "❌ Error: Could not find built .app directory"
-            exit 1
-          fi
+          test -n "$APP_PATH" && [ -d "$APP_PATH" ]
 
           rm -rf build/Payload
           mkdir -p build/Payload
@@ -212,16 +211,12 @@ workflows:
           zip -qry Penrion-OsuTablet-Unsigned.ipa Payload
           mkdir -p ../../release/ios
           mv -f Penrion-OsuTablet-Unsigned.ipa ../../release/ios/
-
       - name: Verify IPA
         script: |
-          if [ -f "release/ios/Penrion-OsuTablet-Unsigned.ipa" ]; then
-            echo "✅ Build successful!"
-            ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
-          else
-            echo "❌ IPA not found"
-            exit 1
-          fi
+          set -euo pipefail
+          test -f "release/ios/Penrion-OsuTablet-Unsigned.ipa"
+          echo "✅ Build successful!"
+          ls -lh "release/ios/Penrion-OsuTablet-Unsigned.ipa"
     artifacts:
       - release/ios/*.ipa
     publishing:
