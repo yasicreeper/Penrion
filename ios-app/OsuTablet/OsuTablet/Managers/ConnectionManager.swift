@@ -250,6 +250,8 @@ class ConnectionManager: ObservableObject {
     }
     
     private func testConnection(to ipAddress: String) async -> Bool {
+        let testActor = ConnectionTestActor()
+        
         return await withCheckedContinuation { continuation in
             let parameters = NWParameters.tcp
             parameters.includePeerToPeer = true
@@ -258,47 +260,46 @@ class ConnectionManager: ObservableObject {
             let port = NWEndpoint.Port(integerLiteral: self.port)
             let testConnection = NWConnection(host: host, port: port, using: parameters)
             
-            let hasResponded = OSAllocatedUnfairLock(initialState: false)
-            
             testConnection.stateUpdateHandler = { state in
-                let shouldContinue = hasResponded.withLock { responded in
-                    if responded {
-                        return false
+                Task {
+                    let shouldContinue = await testActor.tryRespond()
+                    guard shouldContinue else { return }
+                    
+                    switch state {
+                    case .ready:
+                        testConnection.cancel()
+                        continuation.resume(returning: true)
+                    case .failed, .cancelled:
+                        continuation.resume(returning: false)
+                    default:
+                        break
                     }
-                    responded = true
-                    return true
-                }
-                
-                guard shouldContinue else { return }
-                
-                switch state {
-                case .ready:
-                    testConnection.cancel()
-                    continuation.resume(returning: true)
-                case .failed, .cancelled:
-                    continuation.resume(returning: false)
-                default:
-                    break
                 }
             }
             
             testConnection.start(queue: .global())
             
             // Timeout after 0.5 seconds
-            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
-                let shouldTimeout = hasResponded.withLock { responded in
-                    if responded {
-                        return false
-                    }
-                    responded = true
-                    return true
-                }
-                
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                let shouldTimeout = await testActor.tryRespond()
                 if shouldTimeout {
                     testConnection.cancel()
                     continuation.resume(returning: false)
                 }
             }
+        }
+    }
+    
+    private actor ConnectionTestActor {
+        private var hasResponded = false
+        
+        func tryRespond() -> Bool {
+            if hasResponded {
+                return false
+            }
+            hasResponded = true
+            return true
         }
     }
     
