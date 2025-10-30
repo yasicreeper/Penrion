@@ -1,48 +1,60 @@
 import Foundation
 import Combine
 
+/// Professional Settings Manager with automatic persistence
 class SettingsManager: ObservableObject {
-    @Published var activeAreaWidth: Double = 1.0
-    @Published var activeAreaHeight: Double = 1.0
-    @Published var showActiveArea: Bool = false
+    // MARK: - Published Settings (Auto-save on change)
     
-    @Published var pressureCurve: PressureCurve = .linear
-    @Published var pressureSensitivity: Double = 1.0
+    @Published var activeAreaWidth: Double = 1.0 { didSet { save("activeAreaWidth", activeAreaWidth) } }
+    @Published var activeAreaHeight: Double = 1.0 { didSet { save("activeAreaHeight", activeAreaHeight) } }
+    @Published var showActiveArea: Bool = false { didSet { save("showActiveArea", showActiveArea) } }
     
-    @Published var visualFeedback: Bool = true
-    @Published var hapticFeedback: Bool = false
-    @Published var soundEffects: Bool = false
+    @Published var pressureCurve: PressureCurve = .linear { didSet { save("pressureCurve", pressureCurve.rawValue) } }
+    @Published var pressureSensitivity: Double = 1.0 { didSet { save("pressureSensitivity", pressureSensitivity) } }
     
-    @Published var port: Int = 9876
-    @Published var autoConnect: Bool = true
-    @Published var autoReconnect: Bool = true
+    @Published var visualFeedback: Bool = true { didSet { save("visualFeedback", visualFeedback) } }
+    @Published var hapticFeedback: Bool = false { didSet { save("hapticFeedback", hapticFeedback) } }
+    @Published var soundEffects: Bool = false { didSet { save("soundEffects", soundEffects) } }
     
-    @Published var streamQuality: StreamQuality = .medium
-    @Published var lowLatencyMode: Bool = true
+    @Published var port: Int = 9876 { didSet { save("port", port) } }
+    @Published var autoConnect: Bool = true { didSet { save("autoConnect", autoConnect) } }
+    @Published var autoReconnect: Bool = true { didSet { save("autoReconnect", autoReconnect) } }
     
-    @Published var performanceMode: Bool = false
-    @Published var batterySaver: Bool = false
-    @Published var touchRate: Double = 120.0
+    @Published var streamQuality: StreamQuality = .medium { didSet { save("streamQuality", streamQuality.rawValue) } }
+    @Published var lowLatencyMode: Bool = true { didSet { save("lowLatencyMode", lowLatencyMode) } }
     
-    // New features
-    @Published var blackScreenMode: Bool = false
-    @Published var blackScreenButtonEnabled: Bool = true
-    @Published var alwaysOnDisplay: Bool = false
-    @Published var keepScreenOn: Bool = true
-    @Published var inactivityTimeout: Double = 300.0 // 5 minutes
-    @Published var fullscreenMode: Bool = false
-    @Published var veryLowLatencyMode: Bool = false
+    @Published var performanceMode: Bool = false { didSet { save("performanceMode", performanceMode) } }
+    @Published var batterySaver: Bool = false { didSet { save("batterySaver", batterySaver) } }
+    @Published var touchRate: Double = 120.0 { didSet { save("touchRate", touchRate) } }
+    
+    // Display features
+    @Published var blackScreenMode: Bool = false { didSet { save("blackScreenMode", blackScreenMode) } }
+    @Published var blackScreenButtonEnabled: Bool = true { didSet { save("blackScreenButtonEnabled", blackScreenButtonEnabled) } }
+    @Published var alwaysOnDisplay: Bool = false { didSet { save("alwaysOnDisplay", alwaysOnDisplay) } }
+    @Published var keepScreenOn: Bool = true { didSet { save("keepScreenOn", keepScreenOn) } }
+    @Published var inactivityTimeout: Double = 300.0 { didSet { save("inactivityTimeout", inactivityTimeout) } }
+    @Published var fullscreenMode: Bool = false { didSet { save("fullscreenMode", fullscreenMode) } }
+    @Published var veryLowLatencyMode: Bool = false { didSet { save("veryLowLatencyMode", veryLowLatencyMode) } }
     
     // OSU! Mode Presets
-    @Published var osuWindowSize: OsuWindowSize = .standard
-    @Published var osuProMode: Bool = false
+    @Published var osuWindowSize: OsuWindowSize = .standard { didSet { save("osuWindowSize", osuWindowSize.rawValue) } }
+    @Published var osuProMode: Bool = false { didSet { save("osuProMode", osuProMode) } }
+    
+    // UI State
+    @Published var isLoading: Bool = false
+    @Published var isSaving: Bool = false
+    @Published var lastSaveTime: Date?
     
     private let defaults = UserDefaults.standard
     private var cancellables = Set<AnyCancellable>()
+    private var isLoadingSettings = false // Prevents saving during load
     
     init() {
+        print("⚙️ Initializing Settings Manager...")
+        isLoadingSettings = true
         loadSettings()
-        setupBindings()
+        isLoadingSettings = false
+        print("✅ Settings Manager ready")
     }
     
     private func loadSettings() {
@@ -88,6 +100,24 @@ class SettingsManager: ObservableObject {
             osuWindowSize = size
         }
         osuProMode = defaults.bool(forKey: "osuProMode")
+        
+        print("✅ All settings loaded")
+    }
+    
+    private func save(_ key: String, _ value: Any) {
+        guard !isLoadingSettings else { return }
+        
+        isSaving = true
+        defaults.set(value, forKey: key)
+        defaults.synchronize()
+        lastSaveTime = Date()
+        
+        // Show saving indicator briefly
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.isSaving = false
+        }
+        
+        print("💾 Auto-saved: \(key) = \(value)")
     }
     
     private func setupBindings() {
