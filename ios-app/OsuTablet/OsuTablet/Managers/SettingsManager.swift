@@ -24,6 +24,19 @@ class SettingsManager: ObservableObject {
     @Published var batterySaver: Bool = false
     @Published var touchRate: Double = 120.0
     
+    // New features
+    @Published var blackScreenMode: Bool = false
+    @Published var blackScreenButtonEnabled: Bool = true
+    @Published var alwaysOnDisplay: Bool = false
+    @Published var keepScreenOn: Bool = true
+    @Published var inactivityTimeout: Double = 300.0 // 5 minutes
+    @Published var fullscreenMode: Bool = false
+    @Published var veryLowLatencyMode: Bool = false
+    
+    // OSU! Mode Presets
+    @Published var osuWindowSize: OsuWindowSize = .standard
+    @Published var osuProMode: Bool = false
+    
     private let defaults = UserDefaults.standard
     private var cancellables = Set<AnyCancellable>()
     
@@ -60,6 +73,21 @@ class SettingsManager: ObservableObject {
         performanceMode = defaults.bool(forKey: "performanceMode")
         batterySaver = defaults.bool(forKey: "batterySaver")
         touchRate = defaults.double(forKey: "touchRate", defaultValue: 120.0)
+        
+        // New features
+        blackScreenMode = defaults.bool(forKey: "blackScreenMode")
+        blackScreenButtonEnabled = defaults.bool(forKey: "blackScreenButtonEnabled", defaultValue: true)
+        alwaysOnDisplay = defaults.bool(forKey: "alwaysOnDisplay")
+        keepScreenOn = defaults.bool(forKey: "keepScreenOn", defaultValue: true)
+        inactivityTimeout = defaults.double(forKey: "inactivityTimeout", defaultValue: 300.0)
+        fullscreenMode = defaults.bool(forKey: "fullscreenMode")
+        veryLowLatencyMode = defaults.bool(forKey: "veryLowLatencyMode")
+        
+        if let sizeRaw = defaults.string(forKey: "osuWindowSize"),
+           let size = OsuWindowSize(rawValue: sizeRaw) {
+            osuWindowSize = size
+        }
+        osuProMode = defaults.bool(forKey: "osuProMode")
     }
     
     private func setupBindings() {
@@ -81,6 +109,35 @@ class SettingsManager: ObservableObject {
         $touchRate
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
             .sink { self.defaults.set($0, forKey: "touchRate") }
+            .store(in: &cancellables)
+        
+        // New feature bindings
+        $blackScreenMode
+            .sink { self.defaults.set($0, forKey: "blackScreenMode") }
+            .store(in: &cancellables)
+        
+        $blackScreenButtonEnabled
+            .sink { self.defaults.set($0, forKey: "blackScreenButtonEnabled") }
+            .store(in: &cancellables)
+        
+        $alwaysOnDisplay
+            .sink { self.defaults.set($0, forKey: "alwaysOnDisplay") }
+            .store(in: &cancellables)
+        
+        $keepScreenOn
+            .sink { self.defaults.set($0, forKey: "keepScreenOn") }
+            .store(in: &cancellables)
+        
+        $fullscreenMode
+            .sink { self.defaults.set($0, forKey: "fullscreenMode") }
+            .store(in: &cancellables)
+        
+        $veryLowLatencyMode
+            .sink { self.defaults.set($0, forKey: "veryLowLatencyMode") }
+            .store(in: &cancellables)
+        
+        $osuProMode
+            .sink { self.defaults.set($0, forKey: "osuProMode") }
             .store(in: &cancellables)
     }
     
@@ -140,5 +197,38 @@ extension UserDefaults {
             return defaultValue
         }
         return bool(forKey: key)
+    }
+}
+
+enum StreamQuality: String, CaseIterable {
+    case veryLow = "Very Low (144p)"
+    case low = "Low"
+    case medium = "Medium"
+    case high = "High"
+    case ultra = "Ultra"
+}
+
+enum PressureCurve: String, CaseIterable {
+    case linear = "Linear"
+    case exponential = "Exponential"
+    case logarithmic = "Logarithmic"
+    case custom = "Custom"
+}
+
+enum OsuWindowSize: String, CaseIterable {
+    case tiny = "Tiny (640x480)"
+    case small = "Small (800x600)"
+    case standard = "Standard (1024x768)"
+    case large = "Large (1280x960)"
+    case pro = "Pro (1920x1080)"
+    
+    var resolution: (width: Int, height: Int) {
+        switch self {
+        case .tiny: return (640, 480)
+        case .small: return (800, 600)
+        case .standard: return (1024, 768)
+        case .large: return (1280, 960)
+        case .pro: return (1920, 1080)
+        }
     }
 }
