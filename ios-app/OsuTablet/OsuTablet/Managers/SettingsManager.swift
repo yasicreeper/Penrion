@@ -25,7 +25,7 @@ class SettingsManager: ObservableObject {
     
     @Published var performanceMode: Bool = true { didSet { save("performanceMode", performanceMode) } }
     @Published var batterySaver: Bool = false { didSet { save("batterySaver", batterySaver) } }
-    @Published var touchRate: Double = 500.0 { didSet { save("touchRate", touchRate) } }
+    @Published var touchRate: Double = 120.0 { didSet { save("touchRate", touchRate) } } // Realistic: 60-200Hz
     
     // Display features
     @Published var blackScreenMode: Bool = false { didSet { save("blackScreenMode", blackScreenMode) } }
@@ -86,7 +86,7 @@ class SettingsManager: ObservableObject {
         
         performanceMode = defaults.bool(forKey: "performanceMode", defaultValue: true)
         batterySaver = defaults.bool(forKey: "batterySaver")
-        touchRate = defaults.double(forKey: "touchRate", defaultValue: 500.0)
+        touchRate = defaults.double(forKey: "touchRate", defaultValue: 120.0) // Realistic default: 120Hz
         
         // New features
         blackScreenMode = defaults.bool(forKey: "blackScreenMode")

@@ -26,8 +26,8 @@ namespace OsuTabletDriver
         private DateTime _lastTouchTime = DateTime.MinValue;
         private DateTime _lastProcessedTouch = DateTime.MinValue;
         private int _touchCount = 0;
-        private int _targetTouchRate = 500; // Hz - increased for ultra-low latency
-        private double _minTouchInterval = 1.0 / 500.0; // seconds
+        private int _targetTouchRate = 120; // Hz - realistic for iPad (60-200Hz range)
+        private double _minTouchInterval = 1.0 / 120.0; // seconds (informational only)
         
         // Click state tracking
         private bool _isPressed = false;
@@ -60,9 +60,11 @@ namespace OsuTabletDriver
         {
             lock (_lock)
             {
-                _targetTouchRate = Math.Clamp(rateHz, 60, 500);
+                // Note: This is now informational only - we don't throttle
+                // iOS device is limited by screen refresh rate (~60-120Hz)
+                _targetTouchRate = Math.Clamp(rateHz, 60, 200);
                 _minTouchInterval = 1.0 / _targetTouchRate;
-                Console.WriteLine($"🎯 Target touch rate set to: {_targetTouchRate} Hz (min interval: {_minTouchInterval * 1000:F2}ms)");
+                Console.WriteLine($"🎯 Target touch rate set to: {_targetTouchRate} Hz (actual rate depends on iPad screen refresh)");
             }
         }
 
@@ -102,19 +104,10 @@ namespace OsuTabletDriver
             {
                 try
                 {
-                    // Intelligent throttling based on target touch rate
+                    // NO THROTTLING - Accept all touches from iPad
+                    // iOS is limited to ~60-120Hz by screen refresh rate anyway
+                    // Let every touch through for maximum responsiveness
                     var now = DateTime.Now;
-                    var timeSinceLastTouch = (now - _lastProcessedTouch).TotalSeconds;
-                    
-                    // Only throttle movement, never throttle pressure changes
-                    bool pressureChanged = Math.Abs(pressure - _lastPressure) > 0.05;
-                    
-                    if (timeSinceLastTouch < _minTouchInterval && !pressureChanged)
-                    {
-                        // Skip this touch to maintain target rate
-                        return;
-                    }
-                    
                     _lastProcessedTouch = now;
                     _lastPressure = pressure;
 
