@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +21,13 @@ namespace OsuTabletDriver
         private int _quality = 75; // JPEG quality
         
         public int CurrentFps => _currentFps;
+
+        // Win32 API for getting screen dimensions
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
+
+        private const int SM_CXSCREEN = 0;
+        private const int SM_CYSCREEN = 1;
 
         public void StartCapture(NetworkStream stream)
         {
@@ -118,23 +126,41 @@ namespace OsuTabletDriver
 
         private Bitmap CaptureScreen()
         {
-            // Get primary screen dimensions
-            var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
-            var bitmap = new Bitmap(bounds.Width, bounds.Height);
-
-            using (var graphics = Graphics.FromImage(bitmap))
+            try
             {
-                graphics.CopyFromScreen(
-                    bounds.Left,
-                    bounds.Top,
-                    0,
-                    0,
-                    bounds.Size,
-                    CopyPixelOperation.SourceCopy
-                );
-            }
+                // Get screen dimensions using Win32 API
+                int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+                int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-            return bitmap;
+                if (screenWidth <= 0 || screenHeight <= 0)
+                {
+                    // Fallback to default size
+                    screenWidth = 1920;
+                    screenHeight = 1080;
+                }
+
+                var bitmap = new Bitmap(screenWidth, screenHeight);
+
+                using (var graphics = Graphics.FromImage(bitmap))
+                {
+                    graphics.CopyFromScreen(
+                        0,
+                        0,
+                        0,
+                        0,
+                        new Size(screenWidth, screenHeight),
+                        CopyPixelOperation.SourceCopy
+                    );
+                }
+
+                return bitmap;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Screen capture error: {ex.Message}");
+                // Return a blank bitmap on error
+                return new Bitmap(1920, 1080);
+            }
         }
 
         private Bitmap ResizeBitmap(Bitmap original, int maxWidth, int maxHeight)

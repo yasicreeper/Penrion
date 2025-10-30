@@ -13,6 +13,25 @@ namespace OsuTabletDriver
         {
             base.OnStartup(e);
 
+            // Check if running as administrator
+            if (!IsRunAsAdministrator())
+            {
+                var result = MessageBox.Show(
+                    "This application requires Administrator privileges to create a virtual tablet driver.\n\n" +
+                    "Please right-click the executable and select 'Run as administrator'.\n\n" +
+                    "Continue anyway? (Limited functionality)",
+                    "Administrator Rights Required",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning
+                );
+
+                if (result == MessageBoxResult.No)
+                {
+                    Shutdown();
+                    return;
+                }
+            }
+
             try
             {
                 // Initialize virtual tablet driver
@@ -33,12 +52,28 @@ namespace OsuTabletDriver
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Failed to start application: {ex.Message}\n\nMake sure you're running as Administrator.",
+                    $"Failed to start application:\n\n{ex.Message}\n\n" +
+                    $"Stack trace:\n{ex.StackTrace}\n\n" +
+                    "Make sure you're running as Administrator.",
                     "Startup Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error
                 );
                 Shutdown();
+            }
+        }
+
+        private bool IsRunAsAdministrator()
+        {
+            try
+            {
+                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                var principal = new System.Security.Principal.WindowsPrincipal(identity);
+                return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            }
+            catch
+            {
+                return false;
             }
         }
 
