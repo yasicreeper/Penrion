@@ -102,7 +102,9 @@ namespace OsuTabletDriver
                     int mouseX = (int)((screenX * 65535.0) / _screenWidth);
                     int mouseY = (int)((screenY * 65535.0) / _screenHeight);
 
-                    // Send absolute mouse move
+                    // Send absolute mouse move ONLY (no clicking)
+                    // OSU! mode: Let the iPad's physical taps handle clicking through iOS
+                    // This prevents lag from simulated clicks
                     mouse_event(
                         MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK,
                         mouseX,
@@ -111,17 +113,9 @@ namespace OsuTabletDriver
                         UIntPtr.Zero
                     );
 
-                    // Handle pen touch (simulate left click when pressure > threshold)
-                    if (pressure > 0.1)
-                    {
-                        // Pen is down
-                        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-                    }
-                    else
-                    {
-                        // Pen is up
-                        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
-                    }
+                    // NOTE: No automatic clicking! The iPad detects taps natively.
+                    // For OSU!, the game reads the absolute cursor position and
+                    // the user taps the iPad screen directly (not sent over network)
 
                     // Update touch rate
                     _touchCount++;

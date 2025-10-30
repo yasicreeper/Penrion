@@ -7,6 +7,8 @@ class ConnectionManager: ObservableObject {
     @Published var isConnected = false
     @Published var discoveredDevices: [DiscoveredDevice] = []
     @Published var currentFPS = 0
+    @Published var connectionError: String?
+    @Published var isReconnecting = false
     
     var screenFramePublisher = PassthroughSubject<UIImage, Never>()
     
@@ -14,8 +16,13 @@ class ConnectionManager: ObservableObject {
     private var listener: NWListener?
     private var browser: NWBrowser?
     private let port: UInt16 = 9876
+    private var reconnectAttempts = 0
+    private let maxReconnectAttempts = 5
+    private var reconnectTimer: Timer?
+    private var currentDevice: DiscoveredDevice?
     
     func startDiscovery() {
+        logInfo("Starting network discovery", category: "Network")
         let parameters = NWParameters.tcp
         parameters.includePeerToPeer = true
         
@@ -48,6 +55,13 @@ class ConnectionManager: ObservableObject {
     }
     
     func connect(to device: DiscoveredDevice) {
+        currentDevice = device
+        connectionError = nil
+        reconnectAttempts = 0
+        attemptConnection(to: device)
+    }
+    
+    private func attemptConnection(to device: DiscoveredDevice) {
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
         
@@ -65,12 +79,22 @@ class ConnectionManager: ObservableObject {
                 switch state {
                 case .ready:
                     self?.isConnected = true
+                    self?.isReconnecting = false
+                    self?.reconnectAttempts = 0
+                    self?.connectionError = nil
                     self?.startReceiving()
+                    logInfo("Connected to \(device.name)", category: "Network")
+                    print("✅ Connected to \(device.name)")
                 case .failed(let error):
-                    print("Connection failed: \(error)")
+                    logError("Connection failed: \(error.localizedDescription)", category: "Network")
+                    print("❌ Connection failed: \(error)")
                     self?.isConnected = false
+                    self?.connectionError = "Failed: \(error.localizedDescription)"
+                    self?.handleConnectionFailure()
                 case .cancelled:
+                    logInfo("Connection cancelled", category: "Network")
                     self?.isConnected = false
+                    self?.isReconnecting = false
                 default:
                     break
                 }
@@ -78,12 +102,38 @@ class ConnectionManager: ObservableObject {
         }
         
         connection?.start(queue: .main)
+        print("🔌 Connecting to \(device.name)...")
+    }
+    
+    private func handleConnectionFailure() {
+        guard let device = currentDevice, reconnectAttempts < maxReconnectAttempts else {
+            connectionError = "Failed after \(maxReconnectAttempts) attempts"
+            return
+        }
+        
+        reconnectAttempts += 1
+        isReconnecting = true
+        let delay = Double(reconnectAttempts) * 2.0
+        
+        print("🔄 Retry \(reconnectAttempts)/\(maxReconnectAttempts) in \(delay)s...")
+        
+        reconnectTimer?.invalidate()
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            self?.attemptConnection(to: device)
+        }
     }
     
     func disconnect() {
+        reconnectTimer?.invalidate()
+        reconnectTimer = nil
+        reconnectAttempts = 0
+        currentDevice = nil
         connection?.cancel()
         browser?.cancel()
         isConnected = false
+        isReconnecting = false
+        connectionError = nil
+        print("🔌 Disconnected")
     }
     
     func sendTouchData(id: String, x: Double, y: Double, pressure: Double, phase: TouchPhase) {

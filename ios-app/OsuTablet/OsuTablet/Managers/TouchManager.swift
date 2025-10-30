@@ -30,6 +30,11 @@ class TouchManager: ObservableObject {
         // Update pressure with smoothing
         updatePressure(pressure)
         
+        // Log significant events
+        if phase == .began {
+            logDebug("Touch began: id=\(id), pressure=\(String(format: "%.2f", pressure))", category: "Touch")
+        }
+        
         // Send to PC
         connectionManager?.sendTouchData(
             id: id,

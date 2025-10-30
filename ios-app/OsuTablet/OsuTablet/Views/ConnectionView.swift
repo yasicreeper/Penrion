@@ -33,6 +33,25 @@ struct ConnectionView: View {
                     Text("Searching for Windows PC...")
                         .foregroundColor(.gray)
                     
+                    // Connection error/retry status
+                    if let error = connectionManager.connectionError {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 40)
+                            .multilineTextAlignment(.center)
+                    }
+                    
+                    if connectionManager.isReconnecting {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Reconnecting...")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    
                     if connectionManager.discoveredDevices.isEmpty {
                         Text("Make sure the Windows app is running")
                             .font(.caption)
