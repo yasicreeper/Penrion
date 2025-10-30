@@ -130,6 +130,7 @@ workflows:
 
     artifacts:
       - release/ios/*.ipa
+      - ios-app/OsuTablet/build/*.ipa
     
     publishing:
       # Email with IPA download link
@@ -139,14 +140,6 @@ workflows:
         notify:
           success: true    # Get email when build succeeds
           failure: true    # Get email when build fails
-      
-      # Firebase App Distribution - Automatic upload to Firebase
-      firebase:
-        firebase_service_account: $FIREBASE_SERVICE_ACCOUNT
-        ios:
-          app_id: 1:1061806026619:ios:61b583e58fe3683abb97de
-          groups:
-            - testers
         
       # Uncomment below to enable Slack notifications (optional)
       # slack:
@@ -272,6 +265,8 @@ workflows:
           fi
     artifacts:
       - release/ios/*.ipa
+      - ios-app/OsuTablet/build/*.ipa
+    
     publishing:
       # Email with IPA download link
       email:
@@ -280,14 +275,6 @@ workflows:
         notify:
           success: true
           failure: true
-      
-      # Firebase App Distribution - Automatic upload to Firebase
-      firebase:
-        firebase_service_account: $FIREBASE_SERVICE_ACCOUNT
-        ios:
-          app_id: 1:1061806026619:ios:61b583e58fe3683abb97de
-          groups:
-            - testers
       
       # Uncomment below to enable Slack notifications (optional)
       # slack:
