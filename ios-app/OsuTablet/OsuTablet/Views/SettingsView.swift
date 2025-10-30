@@ -201,9 +201,23 @@ struct SettingsView: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        SavingIndicator(isSaving: settingsManager.isSaving)
-                            .padding(.trailing, 20)
-                            .padding(.bottom, 20)
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.7)
+                            
+                            Text("Saving...")
+                                .foregroundColor(.white)
+                                .font(.caption)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.7))
+                        )
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
                     }
                 }
                 .transition(.scale.combined(with: .opacity))
@@ -213,8 +227,31 @@ struct SettingsView: View {
             // Show toast when settings saved
             if showSaveToast {
                 VStack {
-                    ToastView(message: "Settings Saved!", type: .success, isShowing: $showSaveToast)
-                        .padding(.top, 50)
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.title2)
+                        
+                        Text("Settings Saved!")
+                            .foregroundColor(.white)
+                            .font(.headline)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 15)
+                            .fill(Color.black.opacity(0.9))
+                            .shadow(radius: 10)
+                    )
+                    .padding(.top, 50)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .animation(.spring(), value: showSaveToast)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                            withAnimation {
+                                showSaveToast = false
+                            }
+                        }
+                    }
                     Spacer()
                 }
             }
