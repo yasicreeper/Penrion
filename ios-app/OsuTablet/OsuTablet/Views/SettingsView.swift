@@ -191,21 +191,5 @@ struct SettingsView: View {
                 Text("This will reset all settings to their default values. This action cannot be undone.")
             }
         }
-                }
-                .navigationTitle("Settings")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Done") {
-                            settingsManager.saveSettings()
-                            if connectionManager.isConnected {
-                                connectionManager.sendSettings(settingsManager)
-                            }
-                            dismiss()
-                        }
-                    }
-                }
-            }
-        }
     }
 }
